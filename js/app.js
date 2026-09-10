@@ -591,8 +591,7 @@
 
     return pageHead(
       "Plan de Cuentas / Material de consulta",
-      "Consulta rápidamente las cuentas del sistema y el contenido completo del plan oficial.",
-      `<a class="btn btn-primary" href="material/PLAN%20DE%20CUENTAS%20ACTUALIZADO.pdf" target="_blank" rel="noopener">Abrir PDF completo</a>`
+      "Consulta rápidamente las cuentas del sistema y su clasificación contable."
     ) + `<div class="card p-4 mb-5">
       <div class="flex flex-wrap items-end justify-between gap-3 mb-3">
         <div>
@@ -606,10 +605,6 @@
           <tbody id="planRows">${rows || `<tr><td colspan="5" class="text-slate-500">Sin cuentas</td></tr>`}</tbody>
         </table>
       </div>
-    </div>
-    <div class="card p-3 mb-5 pdf-panel">
-      <div class="flex items-center justify-between gap-3 mb-3"><h3 class="text-sm font-semibold">Contenido completo del PDF</h3><a class="text-sm text-indigo-700 font-semibold" href="material/PLAN%20DE%20CUENTAS%20ACTUALIZADO.pdf" target="_blank" rel="noopener">Abrir en otra pestaña</a></div>
-      <object data="material/PLAN%20DE%20CUENTAS%20ACTUALIZADO.pdf" type="application/pdf" class="pdf-viewer"><p class="text-sm text-slate-500 p-4">Tu navegador no puede mostrar el PDF aquí. <a class="text-indigo-700 underline" href="material/PLAN%20DE%20CUENTAS%20ACTUALIZADO.pdf" target="_blank" rel="noopener">Ábrelo desde este enlace</a>.</p></object>
     </div>`;
   }
 
@@ -623,8 +618,7 @@
     modal.innerHTML = `<div class="card account-help-modal" role="dialog" aria-modal="true" aria-labelledby="accountHelpTitle">
       <div class="flex items-start justify-between gap-3"><div><div class="text-xs uppercase tracking-wide text-slate-500">Referencia de cuenta</div><h2 id="accountHelpTitle" class="text-lg font-semibold text-slate-800 mt-1">${esc(account.codigo)} · ${esc(account.nombre)}</h2></div><button type="button" class="btn btn-ghost" data-close-account-help aria-label="Cerrar">Cerrar</button></div>
       <div class="grid sm:grid-cols-2 gap-3 mt-5"><div class="help-detail"><span>Elemento</span><strong>${esc(labelEl(account.elemento))}</strong></div><div class="help-detail"><span>Naturaleza</span><strong>${esc(labelNat(account.naturaleza))}</strong></div></div>
-      <p class="text-sm text-slate-600 leading-relaxed mt-5">Consulta la definición y el tratamiento de esta cuenta en el plan oficial. El PDF contiene el contenido completo del material añadido a la aplicación.</p>
-      <a class="btn btn-primary inline-flex mt-4" href="material/PLAN%20DE%20CUENTAS%20ACTUALIZADO.pdf" target="_blank" rel="noopener">Consultar plan de cuentas</a>
+      <p class="text-sm text-slate-600 leading-relaxed mt-5">Esta ficha muestra la clasificación contable disponible en la aplicación. El documento fuente se conserva localmente y no forma parte de la publicación web.</p>
     </div>`;
     document.body.appendChild(modal);
     modal.querySelector("[data-close-account-help]").onclick = () => modal.remove();

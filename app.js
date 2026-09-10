@@ -1,0 +1,1207 @@
+(() => {
+  "use strict";
+
+  const KEY = "sistema-contable-v1";
+  const TUTORIAL_KEY = "sistema-contable-tutorial-v1";
+
+  const ELEMENTOS = [
+    { id: "activo", label: "Activo" },
+    { id: "pasivo", label: "Pasivo" },
+    { id: "patrimonio", label: "Patrimonio" },
+    { id: "ingreso", label: "Ingreso" },
+    { id: "gasto", label: "Gasto" },
+  ];
+
+  const NATURALEZAS = [
+    { id: "deudora", label: "Deudora" },
+    { id: "acreedora", label: "Acreedora" },
+  ];
+
+  const CATALOGO_BASE = [
+    ["1101", "Caja", "activo", "deudora"],
+    ["1102", "Caja Chica", "activo", "deudora"],
+    ["1103", "Bancos", "activo", "deudora"],
+    ["1104", "Fondo Fijo", "activo", "deudora"],
+    ["1105", "Inventarios", "activo", "deudora"],
+    ["1106", "Documentos por Cobrar a Corto Plazo", "activo", "deudora"],
+    ["1107", "Cuentas por Cobrar Clientes", "activo", "deudora"],
+    ["1108", "Cuentas por Cobrar Empleados", "activo", "deudora"],
+    ["1109", "Inversiones Temporales", "activo", "deudora"],
+    ["1110", "IVA Crédito Tributario", "activo", "deudora"],
+    ["1111", "Retenciones en la Fuente por Cobrar", "activo", "deudora"],
+    ["1112", "Anticipos Sueldos", "activo", "deudora"],
+    ["1113", "Anticipos a Proveedores", "activo", "deudora"],
+    ["1114", "Arriendos Prepagados", "activo", "deudora"],
+    ["1115", "Otros Activos Corrientes", "activo", "deudora"],
+    ["1201", "Propiedad, Planta y Equipo", "activo", "deudora"],
+    ["120101", "Terrenos", "activo", "deudora"],
+    ["120102", "Edificios", "activo", "deudora"],
+    ["120103", "Equipos de Oficina", "activo", "deudora"],
+    ["120104", "Equipos de Computación", "activo", "deudora"],
+    ["120105", "Vehículos", "activo", "deudora"],
+    ["120106", "Muebles y Enseres", "activo", "deudora"],
+    ["120107", "Maquinaria y Equipos", "activo", "deudora"],
+    ["1202", "Depreciación Acumulada", "activo", "acreedora"],
+    ["1203", "Intangibles", "activo", "deudora"],
+    ["120301", "Licencias", "activo", "deudora"],
+    ["120302", "Software", "activo", "deudora"],
+    ["120303", "Marcas y Patentes", "activo", "deudora"],
+    ["1204", "Amortización Acumulada", "activo", "acreedora"],
+    ["1205", "Inversiones a Largo Plazo", "activo", "deudora"],
+    ["1206", "Otros Activos No Corrientes", "activo", "deudora"],
+    ["2101", "Proveedores", "pasivo", "acreedora"],
+    ["2102", "Documentos por Pagar a Corto Plazo", "pasivo", "acreedora"],
+    ["2103", "Cuentas por Pagar", "pasivo", "acreedora"],
+    ["2104", "Obligaciones con IESS", "pasivo", "acreedora"],
+    ["2105", "Retenciones por Pagar", "pasivo", "acreedora"],
+    ["210501", "Retención en la Fuente", "pasivo", "acreedora"],
+    ["210502", "Retención IVA", "pasivo", "acreedora"],
+    ["2106", "Sueldos y Salarios por Pagar", "pasivo", "acreedora"],
+    ["2107", "IVA Débito Fiscal", "pasivo", "acreedora"],
+    ["2108", "Préstamos Bancarios", "pasivo", "acreedora"],
+    ["2109", "Préstamos Bancarios", "pasivo", "acreedora"],
+    ["2110", "Provisiones", "pasivo", "acreedora"],
+    ["2111", "Otros Pasivos Corrientes", "pasivo", "acreedora"],
+    ["2201", "Préstamos Bancarios a Largo Plazo", "pasivo", "acreedora"],
+    ["2202", "Documentos por Pagar a Largo Plazo", "pasivo", "acreedora"],
+    ["2203", "Provisiones a Largo Plazo", "pasivo", "acreedora"],
+    ["2204", "Otros Pasivos No Corrientes", "pasivo", "acreedora"],
+    ["3101", "Capital social", "patrimonio", "acreedora"],
+    ["3102", "Aportes de Socios", "patrimonio", "acreedora"],
+    ["3201", "Reservas", "patrimonio", "acreedora"],
+    ["3202", "Resultados Acumulados", "patrimonio", "acreedora"],
+    ["3203", "Utilidad del Ejercicio", "patrimonio", "acreedora"],
+    ["3204", "Pérdida del Ejercicio", "patrimonio", "deudora"],
+    ["4101", "Ventas", "ingreso", "acreedora"],
+    ["4102", "Ingresos por Servicios", "ingreso", "acreedora"],
+    ["4103", "Otros Ingresos", "ingreso", "acreedora"],
+    ["4201", "Ingresos Financieros", "ingreso", "acreedora"],
+    ["420101", "Intereses Ganados", "ingreso", "acreedora"],
+    ["420102", "Rendimientos Bancarios", "ingreso", "acreedora"],
+    ["4202", "Ingresos Diversos", "ingreso", "acreedora"],
+    ["4203", "Otros Ingresos No Operacionales", "ingreso", "acreedora"],
+    ["5101", "Sueldos y Salarios Administrativos", "gasto", "deudora"],
+    ["5102", "Aportes Patronales", "gasto", "deudora"],
+    ["5103", "Servicios Básicos", "gasto", "deudora"],
+    ["5104", "Arrendamientos", "gasto", "deudora"],
+    ["5105", "Papelería y Útiles de Oficina", "gasto", "deudora"],
+    ["5106", "Depreciaciones", "gasto", "deudora"],
+    ["5107", "Amortizaciones", "gasto", "deudora"],
+    ["5108", "Honorarios Profesionales", "gasto", "deudora"],
+    ["5109", "Servicios Notariales", "gasto", "deudora"],
+    ["5110", "Servicios Generales", "gasto", "deudora"],
+    ["5111", "Materiales de Limpieza", "gasto", "deudora"],
+    ["5201", "Publicidad y Propaganda", "gasto", "deudora"],
+    ["5202", "Comisiones en Ventas", "gasto", "deudora"],
+    ["5203", "Gastos de Transporte", "gasto", "deudora"],
+    ["5204", "Empaques y Embalajes", "gasto", "deudora"],
+    ["5301", "Gastos Financieros", "gasto", "deudora"],
+    ["5302", "Pérdidas en Venta de Activos", "gasto", "deudora"],
+    ["5303", "Multas y Recargos", "gasto", "deudora"],
+    ["5304", "Gastos Diversos", "gasto", "deudora"],
+    ["5305", "Otros Gastos No Operacionales", "gasto", "deudora"],
+  ];
+
+  const STEPS = [
+    { id: "catalogo", phase: "config", n: null, label: "Catálogo de Cuentas" },
+    { id: "plan", phase: "config", n: null, label: "Plan de Cuentas / PDF" },
+    { id: "diario", phase: "1", n: 1, label: "Libro Diario" },
+    { id: "mayor", phase: "1", n: 2, label: "Mayorización" },
+    { id: "btc", phase: "1", n: 3, label: "Balance de Comprobación" },
+    { id: "ajustes", phase: "2", n: 4, label: "Libro de Ajustes" },
+    { id: "mayorAj", phase: "2", n: 5, label: "Mayor Ajustado" },
+    { id: "btcAj", phase: "2", n: 6, label: "Balance de Comprobación Ajustado" },
+    { id: "er", phase: "3", n: 7, label: "Estado de Resultados" },
+    { id: "bg", phase: "3", n: 8, label: "Balance General" },
+  ];
+
+  /* ---------- utilidades ---------- */
+
+  const uid = () =>
+    crypto.randomUUID ? crypto.randomUUID() : `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+  const money = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+  const fmt = (n) =>
+    money(n).toLocaleString("es-CL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  const labelEl = (id) => ELEMENTOS.find((e) => e.id === id)?.label || id;
+  const labelNat = (id) => NATURALEZAS.find((e) => e.id === id)?.label || id;
+
+  const esc = (s) =>
+    String(s ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+
+  /* ---------- persistencia ---------- */
+
+  function seedCuentas() {
+    return CATALOGO_BASE.map(([codigo, nombre, elemento, naturaleza]) => ({
+      id: uid(),
+      codigo,
+      nombre,
+      elemento,
+      naturaleza,
+    }));
+  }
+
+  function defaultState() {
+    return {
+      empresa: "Empresa Demo SpA",
+      periodo: String(new Date().getFullYear()),
+      sinAjustes: false,
+      cuentas: seedCuentas(),
+      asientos: [],
+      view: "catalogo",
+    };
+  }
+
+  function mergeCatalogo(cuentasGuardadas = []) {
+    const guardadas = new Map(cuentasGuardadas.map((cuenta) => [cuenta.codigo, cuenta]));
+    const catalogoPdf = CATALOGO_BASE.map(([codigo, nombre, elemento, naturaleza]) => {
+      const cuenta = guardadas.get(codigo);
+      return cuenta
+        ? { ...cuenta, nombre, elemento, naturaleza }
+        : { id: uid(), codigo, nombre, elemento, naturaleza };
+    });
+    const codigosPdf = new Set(CATALOGO_BASE.map(([codigo]) => codigo));
+    const cuentasPersonalizadas = cuentasGuardadas.filter((cuenta) => !codigosPdf.has(cuenta.codigo));
+    return [...catalogoPdf, ...cuentasPersonalizadas];
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return defaultState();
+      const parsed = JSON.parse(raw);
+      return { ...defaultState(), ...parsed, cuentas: mergeCatalogo(parsed.cuentas || []) };
+    } catch {
+      return defaultState();
+    }
+  }
+
+  function save() {
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({
+        empresa: state.empresa,
+        periodo: state.periodo,
+        sinAjustes: state.sinAjustes,
+        cuentas: state.cuentas,
+        asientos: state.asientos,
+        view: state.view,
+      })
+    );
+  }
+
+  let state = load();
+  let toastTimer = null;
+
+  /* ---------- dominio contable ---------- */
+
+  const asientosNormales = () => state.asientos.filter((a) => !a.esAjuste);
+  const asientosAjuste = () => state.asientos.filter((a) => a.esAjuste);
+
+  function cuentaById(id) {
+    return state.cuentas.find((c) => c.id === id);
+  }
+
+  function lineaValida(l) {
+    const d = money(l.debe);
+    const h = money(l.haber);
+    if (!l.cuentaId) return false;
+    if (d > 0 && h > 0) return false;
+    if (d < 0 || h < 0) return false;
+    return d > 0 || h > 0;
+  }
+
+  function totalesAsiento(lineas) {
+    const debe = money(lineas.reduce((s, l) => s + money(l.debe), 0));
+    const haber = money(lineas.reduce((s, l) => s + money(l.haber), 0));
+    return { debe, haber, diff: money(debe - haber), cuadrado: debe === haber && debe > 0 };
+  }
+
+  function asientoCuadrado(asiento) {
+    const lineasOk = (asiento.lineas || []).every(lineaValida);
+    const t = totalesAsiento(asiento.lineas || []);
+    return lineasOk && t.cuadrado && (asiento.glosa || "").trim() && asiento.fecha;
+  }
+
+  function movimientos(incluirAjustes) {
+    const list = incluirAjustes ? state.asientos : asientosNormales();
+    return [...list].sort((a, b) => String(a.fecha).localeCompare(b.fecha) || String(a.id).localeCompare(b.id));
+  }
+
+  function mayor(incluirAjustes) {
+    const map = new Map();
+    for (const a of movimientos(incluirAjustes)) {
+      a.lineas.forEach((l, idx) => {
+        const cta = cuentaById(l.cuentaId);
+        if (!cta) return;
+        if (!map.has(cta.id)) {
+          map.set(cta.id, { cuenta: cta, lineas: [], debe: 0, haber: 0 });
+        }
+        const row = map.get(cta.id);
+        const debe = money(l.debe);
+        const haber = money(l.haber);
+        row.debe = money(row.debe + debe);
+        row.haber = money(row.haber + haber);
+        const saldoNat =
+          cta.naturaleza === "deudora" ? money(row.debe - row.haber) : money(row.haber - row.debe);
+        row.lineas.push({
+          fecha: a.fecha,
+          glosa: a.glosa,
+          esAjuste: !!a.esAjuste,
+          debe,
+          haber,
+          saldo: saldoNat,
+          asientoId: a.id,
+          idx,
+        });
+      });
+    }
+    return [...map.values()].sort((a, b) => a.cuenta.codigo.localeCompare(b.cuenta.codigo));
+  }
+
+  function saldoCorridoFinal(cta, debe, haber) {
+    return cta.naturaleza === "deudora" ? money(debe - haber) : money(haber - debe);
+  }
+
+  function trialBalance(incluirAjustes) {
+    const rows = mayor(incluirAjustes).map((m) => {
+      const debe = m.debe;
+      const haber = m.haber;
+      const neto = money(debe - haber);
+      const saldoDeudor = neto > 0 ? neto : 0;
+      const saldoAcreedor = neto < 0 ? money(-neto) : 0;
+      return { cuenta: m.cuenta, debe, haber, saldoDeudor, saldoAcreedor };
+    });
+    const sum = rows.reduce(
+      (s, r) => ({
+        debe: money(s.debe + r.debe),
+        haber: money(s.haber + r.haber),
+        saldoDeudor: money(s.saldoDeudor + r.saldoDeudor),
+        saldoAcreedor: money(s.saldoAcreedor + r.saldoAcreedor),
+      }),
+      { debe: 0, haber: 0, saldoDeudor: 0, saldoAcreedor: 0 }
+    );
+    return {
+      rows,
+      sum,
+      sumasOk: sum.debe === sum.haber,
+      saldosOk: sum.saldoDeudor === sum.saldoAcreedor,
+    };
+  }
+
+  function saldoElemento(cta, debe, haber) {
+    const netoDebe = money(debe - haber);
+    if (cta.naturaleza === "deudora") return netoDebe;
+    return money(-netoDebe);
+  }
+
+  function estadoResultados() {
+    const tb = trialBalance(true);
+    const ingresos = [];
+    const gastos = [];
+    for (const r of tb.rows) {
+      const saldo = saldoElemento(r.cuenta, r.debe, r.haber);
+      if (r.cuenta.elemento === "ingreso" && saldo !== 0) ingresos.push({ ...r, saldo });
+      if (r.cuenta.elemento === "gasto" && saldo !== 0) gastos.push({ ...r, saldo });
+    }
+    const totalIng = money(ingresos.reduce((s, x) => s + x.saldo, 0));
+    const totalGas = money(gastos.reduce((s, x) => s + x.saldo, 0));
+    const utilidad = money(totalIng - totalGas);
+    return { ingresos, gastos, totalIng, totalGas, utilidad };
+  }
+
+  function balanceGeneral() {
+    const tb = trialBalance(true);
+    const er = estadoResultados();
+    const grupos = { activo: [], pasivo: [], patrimonio: [] };
+    for (const r of tb.rows) {
+      if (!grupos[r.cuenta.elemento]) continue;
+      const saldo = saldoElemento(r.cuenta, r.debe, r.haber);
+      if (saldo === 0) continue;
+      grupos[r.cuenta.elemento].push({ ...r, saldo });
+    }
+    const tot = (arr) => money(arr.reduce((s, x) => s + x.saldo, 0));
+    const activo = tot(grupos.activo);
+    const pasivo = tot(grupos.pasivo);
+    const patrimonioCtas = tot(grupos.patrimonio);
+    const patrimonio = money(patrimonioCtas + er.utilidad);
+    const pasPat = money(pasivo + patrimonio);
+    return {
+      grupos,
+      activo,
+      pasivo,
+      patrimonioCtas,
+      utilidad: er.utilidad,
+      patrimonio,
+      pasPat,
+      cuadra: activo === pasPat,
+      diferencia: money(activo - pasPat),
+    };
+  }
+
+  function cuentaEnUso(id) {
+    return state.asientos.some((a) => a.lineas.some((l) => l.cuentaId === id));
+  }
+
+  /* ---------- bloqueo de pasos ---------- */
+
+  function btcFase1() {
+    return trialBalance(false);
+  }
+
+  function unlockReason(id) {
+    const hasCtas = state.cuentas.length > 0;
+    const hasDiario = asientosNormales().length > 0;
+    const btc = hasDiario ? btcFase1() : null;
+    const fase1Ok = hasDiario && btc.sumasOk && btc.saldosOk;
+    const fase2Ok = asientosAjuste().length > 0 || state.sinAjustes;
+
+    if (id === "catalogo" || id === "plan") return null;
+    if (id === "diario") return hasCtas ? null : "Cargue al menos una cuenta en el catálogo.";
+    if (id === "mayor" || id === "btc")
+      return hasDiario ? null : "Registre al menos un asiento cuadrado en el Libro Diario.";
+    if (id === "ajustes")
+      return fase1Ok
+        ? null
+        : "Complete la Fase 1: Libro Diario y un Balance de Comprobación cuadrado.";
+    if (id === "mayorAj" || id === "btcAj" || id === "er" || id === "bg") {
+      if (!fase1Ok) return "Complete primero la Fase 1 (diario y balance cuadrado).";
+      if (!fase2Ok)
+        return "Registre asientos de ajuste o marque que el periodo no tiene ajustes.";
+      return null;
+    }
+    return "Paso bloqueado.";
+  }
+
+  function isUnlocked(id) {
+    return !unlockReason(id);
+  }
+
+  /* ---------- UI ---------- */
+
+  function toast(msg) {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.remove("hidden");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.add("hidden"), 3200);
+  }
+
+  function badgeCuadra(ok, okText, badText) {
+    return ok
+      ? `<span class="badge badge-ok">● ${esc(okText)}</span>`
+      : `<span class="badge badge-bad">● ${esc(badText)}</span>`;
+  }
+
+  function navHtml() {
+    const groups = [
+      { key: "config", title: "Configuración" },
+      { key: "1", title: "Fase 1 · Diario a Balances" },
+      { key: "2", title: "Fase 2 · Ajustes de fin de periodo" },
+      { key: "3", title: "Fase 3 · Estados financieros" },
+    ];
+    return groups
+      .map((g) => {
+        const items = STEPS.filter((s) => s.phase === g.key)
+          .map((s) => {
+            const locked = !isUnlocked(s.id);
+            const active = state.view === s.id;
+            const num = s.n ? `<span class="step-num">${s.n}</span>` : `<span class="step-num">●</span>`;
+            return `<button class="nav-btn ${active ? "active" : ""}" data-nav="${s.id}" ${
+              locked ? "disabled" : ""
+            } title="${locked ? esc(unlockReason(s.id)) : ""}">${num}<span>${esc(s.label)}</span>${
+              locked ? `<span class="ml-auto text-[10px] opacity-80">Bloqueado</span>` : ""
+            }</button>`;
+          })
+          .join("");
+        return `<div><div class="px-2 pb-1 text-[10px] uppercase tracking-[0.14em] text-indigo-200/70">${g.title}</div>${items}</div>`;
+      })
+      .join("");
+  }
+
+  function renderNav() {
+    document.getElementById("nav").innerHTML = navHtml();
+    document.querySelectorAll("[data-nav]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.nav;
+        if (!isUnlocked(id)) {
+          toast(unlockReason(id));
+          return;
+        }
+        state.view = id;
+        save();
+        render();
+      });
+    });
+  }
+
+  function kpis(items) {
+    return `<div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-5">${items
+      .map(
+        (k) =>
+          `<div class="card kpi"><div class="lbl">${esc(k.lbl)}</div><div class="val ${k.cls || ""}">${k.val}</div>${
+            k.sub ? `<div class="text-xs text-slate-500 mt-1">${k.sub}</div>` : ""
+          }</div>`
+      )
+      .join("")}</div>`;
+  }
+
+  function pageHead(title, subtitle, extra = "") {
+    return `<div class="flex flex-wrap items-start justify-between gap-3 mb-5">
+      <div>
+        <h2 class="text-xl font-semibold text-slate-800">${esc(title)}</h2>
+        <p class="text-sm text-slate-500 mt-0.5">${subtitle}</p>
+      </div>
+      <div class="no-print">${extra}</div>
+    </div>`;
+  }
+
+  /* ----- catálogo ----- */
+
+  function viewCatalogo() {
+    const rows = [...state.cuentas]
+      .sort((a, b) => a.codigo.localeCompare(b.codigo))
+      .map(
+        (c) => `<tr>
+          <td class="font-mono text-xs">${esc(c.codigo)}</td>
+          <td>${esc(c.nombre)} <button type="button" class="account-help" data-account-help="${c.id}" title="Consultar esta cuenta" aria-label="Consultar ${esc(c.nombre)}">?</button></td>
+          <td><span class="badge badge-info">${esc(labelEl(c.elemento))}</span></td>
+          <td><span class="badge badge-gray">${esc(labelNat(c.naturaleza))}</span></td>
+          <td class="no-print whitespace-nowrap">
+            <button class="btn btn-ghost" data-edit="${c.id}">Editar</button>
+            <button class="btn btn-danger" data-del="${c.id}">Eliminar</button>
+          </td>
+        </tr>`
+      )
+      .join("");
+
+    return (
+      pageHead(
+        "Catálogo de Cuentas",
+        "Plan de cuentas del ejercicio. Las cuentas usadas en asientos no se pueden eliminar."
+      ) +
+      `<div class="card p-4 mb-4">
+        <h3 class="text-sm font-semibold mb-3">Nueva / editar cuenta</h3>
+        <form id="formCuenta" class="grid md:grid-cols-5 gap-3 items-end">
+          <input type="hidden" name="editId" />
+          <div class="field"><label>Código</label><input name="codigo" class="input" required maxlength="12" /></div>
+          <div class="field md:col-span-2"><label>Nombre</label><input name="nombre" class="input" required /></div>
+          <div class="field"><label>Elemento</label>
+            <select name="elemento" class="input">${ELEMENTOS.map(
+              (e) => `<option value="${e.id}">${e.label}</option>`
+            ).join("")}</select>
+          </div>
+          <div class="field"><label>Naturaleza</label>
+            <select name="naturaleza" class="input">${NATURALEZAS.map(
+              (e) => `<option value="${e.id}">${e.label}</option>`
+            ).join("")}</select>
+          </div>
+          <div class="md:col-span-5 flex gap-2">
+            <button class="btn btn-primary" type="submit">Guardar cuenta</button>
+            <button type="button" id="cancelCuenta" class="btn btn-ghost">Limpiar</button>
+          </div>
+        </form>
+      </div>
+      <div class="table-wrap card">
+        <table class="data">
+          <thead><tr><th>Código</th><th>Nombre</th><th>Elemento</th><th>Naturaleza</th><th class="no-print"></th></tr></thead>
+          <tbody>${rows || `<tr><td colspan="5" class="text-slate-500">Sin cuentas</td></tr>`}</tbody>
+        </table>
+      </div>`
+    );
+  }
+
+  function bindCatalogo() {
+    const form = document.getElementById("formCuenta");
+    const reset = () => {
+      form.reset();
+      form.editId.value = "";
+    };
+    document.getElementById("cancelCuenta").onclick = reset;
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(form).entries());
+      const codigo = data.codigo.trim();
+      const nombre = data.nombre.trim();
+      const dup = state.cuentas.find((c) => c.codigo === codigo && c.id !== data.editId);
+      if (dup) return toast("El código ya existe.");
+      if (data.editId) {
+        const cta = state.cuentas.find((c) => c.id === data.editId);
+        Object.assign(cta, { codigo, nombre, elemento: data.elemento, naturaleza: data.naturaleza });
+        toast("Cuenta actualizada.");
+      } else {
+        state.cuentas.push({ id: uid(), codigo, nombre, elemento: data.elemento, naturaleza: data.naturaleza });
+        toast("Cuenta agregada.");
+      }
+      save();
+      render();
+    };
+    document.querySelectorAll("[data-edit]").forEach((b) => {
+      b.onclick = () => {
+        const c = cuentaById(b.dataset.edit);
+        form.editId.value = c.id;
+        form.codigo.value = c.codigo;
+        form.nombre.value = c.nombre;
+        form.elemento.value = c.elemento;
+        form.naturaleza.value = c.naturaleza;
+        form.codigo.focus();
+      };
+    });
+    document.querySelectorAll("[data-del]").forEach((b) => {
+      b.onclick = () => {
+        if (cuentaEnUso(b.dataset.del)) return toast("No se puede eliminar: la cuenta tiene movimientos.");
+        if (!confirm("¿Eliminar esta cuenta?")) return;
+        state.cuentas = state.cuentas.filter((c) => c.id !== b.dataset.del);
+        save();
+        render();
+      };
+    });
+  }
+
+  /* ----- libro diario / ajustes ----- */
+
+  function opcionesCuentas() {
+    return [...state.cuentas]
+      .sort((a, b) => a.codigo.localeCompare(b.codigo))
+      .map((c) => `<option value="${c.id}">${esc(c.codigo)} · ${esc(c.nombre)}</option>`)
+      .join("");
+  }
+
+  function viewPlan() {
+    const rows = [...state.cuentas]
+      .sort((a, b) => a.codigo.localeCompare(b.codigo))
+      .map(
+        (c) => `<tr data-plan-account data-search="${esc(`${c.codigo} ${c.nombre} ${labelEl(c.elemento)} ${labelNat(c.naturaleza)}`.toLowerCase())}">
+          <td class="font-mono text-xs">${esc(c.codigo)}</td>
+          <td>${esc(c.nombre)}</td>
+          <td><span class="badge badge-info">${esc(labelEl(c.elemento))}</span></td>
+          <td><span class="badge badge-gray">${esc(labelNat(c.naturaleza))}</span></td>
+          <td><button type="button" class="account-help" data-account-help="${c.id}" title="Ver referencia de esta cuenta" aria-label="Ver referencia de ${esc(c.nombre)}">?</button></td>
+        </tr>`
+      )
+      .join("");
+
+    return pageHead(
+      "Plan de Cuentas / Material de consulta",
+      "Consulta rápidamente las cuentas del sistema y el contenido completo del plan oficial.",
+      `<a class="btn btn-primary" href="material/PLAN%20DE%20CUENTAS%20ACTUALIZADO.pdf" target="_blank" rel="noopener">Abrir PDF completo</a>`
+    ) + `<div class="card p-4 mb-5">
+      <div class="flex flex-wrap items-end justify-between gap-3 mb-3">
+        <div>
+          <h3 class="text-sm font-semibold">Cuentas disponibles</h3>
+          <p class="text-xs text-slate-500 mt-1">Usa el icono ? para consultar una cuenta mientras trabajas.</p>
+        </div>
+        <div class="field w-full sm:w-72"><label for="planSearch">Buscar cuenta</label><input id="planSearch" class="input" placeholder="Código, nombre o elemento" /></div>
+      </div>
+      <div class="table-wrap">
+        <table class="data"><thead><tr><th>Código</th><th>Cuenta</th><th>Elemento</th><th>Naturaleza</th><th></th></tr></thead>
+          <tbody id="planRows">${rows || `<tr><td colspan="5" class="text-slate-500">Sin cuentas</td></tr>`}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card p-3 mb-5 pdf-panel">
+      <div class="flex items-center justify-between gap-3 mb-3"><h3 class="text-sm font-semibold">Contenido completo del PDF</h3><a class="text-sm text-indigo-700 font-semibold" href="material/PLAN%20DE%20CUENTAS%20ACTUALIZADO.pdf" target="_blank" rel="noopener">Abrir en otra pestaña</a></div>
+      <object data="material/PLAN%20DE%20CUENTAS%20ACTUALIZADO.pdf" type="application/pdf" class="pdf-viewer"><p class="text-sm text-slate-500 p-4">Tu navegador no puede mostrar el PDF aquí. <a class="text-indigo-700 underline" href="material/PLAN%20DE%20CUENTAS%20ACTUALIZADO.pdf" target="_blank" rel="noopener">Ábrelo desde este enlace</a>.</p></object>
+    </div>`;
+  }
+
+  function openAccountHelp(id) {
+    const account = cuentaById(id);
+    if (!account) return;
+    document.getElementById("accountHelp")?.remove();
+    const modal = document.createElement("div");
+    modal.id = "accountHelp";
+    modal.className = "modal-bg";
+    modal.innerHTML = `<div class="card account-help-modal" role="dialog" aria-modal="true" aria-labelledby="accountHelpTitle">
+      <div class="flex items-start justify-between gap-3"><div><div class="text-xs uppercase tracking-wide text-slate-500">Referencia de cuenta</div><h2 id="accountHelpTitle" class="text-lg font-semibold text-slate-800 mt-1">${esc(account.codigo)} · ${esc(account.nombre)}</h2></div><button type="button" class="btn btn-ghost" data-close-account-help aria-label="Cerrar">Cerrar</button></div>
+      <div class="grid sm:grid-cols-2 gap-3 mt-5"><div class="help-detail"><span>Elemento</span><strong>${esc(labelEl(account.elemento))}</strong></div><div class="help-detail"><span>Naturaleza</span><strong>${esc(labelNat(account.naturaleza))}</strong></div></div>
+      <p class="text-sm text-slate-600 leading-relaxed mt-5">Consulta la definición y el tratamiento de esta cuenta en el plan oficial. El PDF contiene el contenido completo del material añadido a la aplicación.</p>
+      <a class="btn btn-primary inline-flex mt-4" href="material/PLAN%20DE%20CUENTAS%20ACTUALIZADO.pdf" target="_blank" rel="noopener">Consultar plan de cuentas</a>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.querySelector("[data-close-account-help]").onclick = () => modal.remove();
+    modal.onclick = (event) => { if (event.target === modal) modal.remove(); };
+  }
+
+  function bindPlan() {
+    document.querySelectorAll("[data-account-help]").forEach((button) => {
+      button.onclick = () => openAccountHelp(button.dataset.accountHelp);
+    });
+    const search = document.getElementById("planSearch");
+    if (search) {
+      search.oninput = () => {
+        const query = search.value.trim().toLowerCase();
+        document.querySelectorAll("[data-plan-account]").forEach((row) => {
+          row.hidden = query && !row.dataset.search.includes(query);
+        });
+      };
+    }
+  }
+
+  function historialAsientos(esAjuste) {
+    const list = (esAjuste ? asientosAjuste() : asientosNormales()).sort((a, b) =>
+      b.fecha.localeCompare(a.fecha)
+    );
+    if (!list.length) {
+      return `<p class="text-sm text-slate-500 mt-6">Aún no hay asientos${esAjuste ? " de ajuste" : ""}.</p>`;
+    }
+    return list
+      .map((a) => {
+        const t = totalesAsiento(a.lineas);
+        const lineas = a.lineas
+          .map((l) => {
+            const c = cuentaById(l.cuentaId);
+            return `<tr>
+              <td class="pl-6 text-slate-600">${esc(c ? `${c.codigo} ${c.nombre}` : "—")}</td>
+              <td class="num">${l.debe ? fmt(l.debe) : ""}</td>
+              <td class="num">${l.haber ? fmt(l.haber) : ""}</td>
+            </tr>`;
+          })
+          .join("");
+        return `<div class="table-wrap card mb-3">
+          <table class="data">
+            <thead><tr>
+              <th>${esc(a.fecha)} · ${esc(a.glosa)} ${
+                a.esAjuste ? `<span class="badge badge-info ml-2">Ajuste</span>` : ""
+              }</th>
+              <th class="num w-32">Debe</th>
+              <th class="num w-32">Haber</th>
+            </tr></thead>
+            <tbody>${lineas}</tbody>
+            <tfoot><tr>
+              <td>
+                <div class="flex items-center gap-2">Totales ${badgeCuadra(t.cuadrado, "Cuadrado", "Descuadrado")}
+                <button class="btn btn-danger ml-auto no-print" data-del-asiento="${a.id}">Eliminar</button></div>
+              </td>
+              <td class="num">${fmt(t.debe)}</td>
+              <td class="num">${fmt(t.haber)}</td>
+            </tr></tfoot>
+          </table>
+        </div>`;
+      })
+      .join("");
+  }
+
+  function viewLibro({ esAjuste }) {
+    const title = esAjuste ? "Libro de Ajustes" : "Libro Diario";
+    const sub = esAjuste
+      ? "Asientos de fin de periodo (depreciaciones, provisiones, devengos). Se marcan internamente como esAjuste = true."
+      : "Registre partidas dobles. El asiento solo se guarda si Suma Debe = Suma Haber.";
+    const extra = esAjuste
+      ? `<label class="inline-flex items-center gap-2 text-sm bg-white border border-slate-200 rounded-xl px-3 py-2">
+           <input type="checkbox" id="sinAjustes" ${state.sinAjustes ? "checked" : ""} />
+           Este periodo no tiene ajustes
+         </label>`
+      : "";
+
+    return (
+      pageHead(title, sub, extra) +
+      `<div class="card p-4 mb-5">
+        <form id="formAsiento" class="space-y-3">
+          <div class="grid md:grid-cols-3 gap-3">
+            <div class="field"><label>Fecha</label><input type="date" name="fecha" class="input" required /></div>
+            <div class="field md:col-span-2"><label>Glosa</label><input name="glosa" class="input" required placeholder="Descripción del asiento" /></div>
+          </div>
+          <div class="table-wrap">
+            <table class="data" id="tablaLineas">
+              <thead><tr><th>Cuenta</th><th class="num">Debe</th><th class="num">Haber</th><th class="no-print"></th></tr></thead>
+              <tbody></tbody>
+              <tfoot>
+                <tr>
+                  <td>Totales <span id="badgePartida"></span></td>
+                  <td class="num" id="totDebe">0,00</td>
+                  <td class="num" id="totHaber">0,00</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" id="addLinea" class="btn btn-ghost">Agregar fila</button>
+            <button type="submit" id="saveAsiento" class="btn btn-primary" disabled>Guardar asiento</button>
+            <span id="msgDiff" class="text-sm text-slate-500 self-center"></span>
+          </div>
+        </form>
+      </div>
+      <h3 class="text-sm font-semibold text-slate-600 mb-2">Asientos registrados</h3>
+      ${historialAsientos(esAjuste)}`
+    );
+  }
+
+  function bindLibro(esAjuste) {
+    const form = document.getElementById("formAsiento");
+    form.fecha.value = today();
+    const tbody = document.querySelector("#tablaLineas tbody");
+
+    const readLineas = () =>
+      [...tbody.querySelectorAll("tr")].map((tr) => ({
+        cuentaId: tr.querySelector(".sel-cta").value,
+        debe: money(tr.querySelector(".inp-debe").value),
+        haber: money(tr.querySelector(".inp-haber").value),
+      }));
+
+    const refreshTotales = () => {
+      const t = totalesAsiento(readLineas());
+      document.getElementById("totDebe").textContent = fmt(t.debe);
+      document.getElementById("totHaber").textContent = fmt(t.haber);
+      const ok = asientoCuadrado({
+        fecha: form.fecha.value,
+        glosa: form.glosa.value,
+        lineas: readLineas(),
+      });
+      document.getElementById("saveAsiento").disabled = !ok;
+      document.getElementById("badgePartida").innerHTML = badgeCuadra(
+        t.debe === t.haber && t.debe > 0,
+        "Partida doble OK",
+        "No cuadra"
+      );
+      const d = t.diff;
+      document.getElementById("msgDiff").textContent =
+        t.debe === t.haber ? "" : `Diferencia: ${fmt(Math.abs(d))} al ${d > 0 ? "Debe" : "Haber"}`;
+    };
+
+    const addRow = (linea = { cuentaId: "", debe: "", haber: "" }) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td><div class="flex items-center gap-1"><select class="input sel-cta"><option value="">Seleccione cuenta…</option>${opcionesCuentas()}</select><button type="button" class="account-help" data-line-account-help title="Consultar cuenta" aria-label="Consultar cuenta" hidden>?</button></div></td>
+        <td><input class="input num inp-debe" type="number" min="0" step="0.01" value="${linea.debe || ""}" /></td>
+        <td><input class="input num inp-haber" type="number" min="0" step="0.01" value="${linea.haber || ""}" /></td>
+        <td class="no-print"><button type="button" class="btn btn-danger del-linea">Quitar</button></td>`;
+      if (linea.cuentaId) tr.querySelector(".sel-cta").value = linea.cuentaId;
+      tbody.appendChild(tr);
+      const debe = tr.querySelector(".inp-debe");
+      const haber = tr.querySelector(".inp-haber");
+      const onDebe = () => {
+        if (money(debe.value) > 0) haber.value = "";
+        refreshTotales();
+      };
+      const onHaber = () => {
+        if (money(haber.value) > 0) debe.value = "";
+        refreshTotales();
+      };
+      debe.addEventListener("input", onDebe);
+      debe.addEventListener("change", onDebe);
+      haber.addEventListener("input", onHaber);
+      haber.addEventListener("change", onHaber);
+      const accountSelect = tr.querySelector(".sel-cta");
+      const accountHelp = tr.querySelector("[data-line-account-help]");
+      accountSelect.addEventListener("change", () => {
+        accountHelp.hidden = !accountSelect.value;
+        accountHelp.onclick = () => openAccountHelp(accountSelect.value);
+        refreshTotales();
+      });
+      tr.querySelector(".del-linea").onclick = () => {
+        tr.remove();
+        if (!tbody.children.length) addRow();
+        refreshTotales();
+      };
+    };
+
+    addRow();
+    addRow();
+    document.getElementById("addLinea").onclick = () => addRow();
+    form.glosa.addEventListener("input", refreshTotales);
+    form.fecha.addEventListener("change", refreshTotales);
+    refreshTotales();
+
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const asiento = {
+        id: uid(),
+        fecha: form.fecha.value,
+        glosa: form.glosa.value.trim(),
+        esAjuste: !!esAjuste,
+        lineas: readLineas().filter(lineaValida),
+      };
+      if (!asientoCuadrado(asiento)) return toast("El asiento debe estar cuadrado para guardarse.");
+      if (esAjuste) state.sinAjustes = false;
+      state.asientos.push(asiento);
+      save();
+      toast("Asiento guardado.");
+      render();
+    };
+
+    document.querySelectorAll("[data-del-asiento]").forEach((b) => {
+      b.onclick = () => {
+        if (!confirm("¿Eliminar este asiento?")) return;
+        state.asientos = state.asientos.filter((a) => a.id !== b.dataset.delAsiento);
+        save();
+        render();
+      };
+    });
+
+    const chk = document.getElementById("sinAjustes");
+    if (chk) {
+      chk.onchange = () => {
+        if (chk.checked && asientosAjuste().length) {
+          chk.checked = false;
+          return toast("Elimine los asientos de ajuste antes de marcar el periodo sin ajustes.");
+        }
+        state.sinAjustes = chk.checked;
+        save();
+        renderNav();
+        toast(chk.checked ? "Fase 2 cerrada sin ajustes. Ya puede continuar." : "Fase 2 requiere ajustes o confirmación.");
+      };
+    }
+  }
+
+  /* ----- mayor ----- */
+
+  function viewMayor(incluirAjustes) {
+    const data = mayor(incluirAjustes);
+    const bloques = data.length
+      ? data
+          .map((m) => {
+            const saldo = saldoCorridoFinal(m.cuenta, m.debe, m.haber);
+            const lado = m.cuenta.naturaleza === "deudora" ? "Deudor" : "Acreedor";
+            const filas = m.lineas
+              .map(
+                (l) => `<tr>
+                  <td>${esc(l.fecha)}${l.esAjuste ? ` <span class="badge badge-info">Aj.</span>` : ""}</td>
+                  <td>${esc(l.glosa)}</td>
+                  <td class="num">${l.debe ? fmt(l.debe) : ""}</td>
+                  <td class="num">${l.haber ? fmt(l.haber) : ""}</td>
+                  <td class="num">${fmt(l.saldo)}</td>
+                </tr>`
+              )
+              .join("");
+            return `<div class="card ledger-block mb-4 overflow-hidden">
+              <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap justify-between gap-2">
+                <div>
+                  <div class="font-semibold">${esc(m.cuenta.codigo)} · ${esc(m.cuenta.nombre)}</div>
+                  <div class="text-xs text-slate-500">${esc(labelEl(m.cuenta.elemento))} · Naturaleza ${esc(
+                    labelNat(m.cuenta.naturaleza)
+                  )}</div>
+                </div>
+                <div class="text-sm">Saldo ${lado}: <b class="num">${fmt(saldo)}</b></div>
+              </div>
+              <table class="data">
+                <thead><tr><th>Fecha</th><th>Glosa</th><th class="num">Débitos</th><th class="num">Créditos</th><th class="num">Saldo corrido</th></tr></thead>
+                <tbody>${filas}</tbody>
+                <tfoot><tr><td colspan="2">Totales</td><td class="num">${fmt(m.debe)}</td><td class="num">${fmt(
+                  m.haber
+                )}</td><td class="num">${fmt(saldo)}</td></tr></tfoot>
+              </table>
+            </div>`;
+          })
+          .join("")
+      : `<div class="card p-6 text-slate-500">No hay cuentas con movimiento.</div>`;
+
+    return (
+      pageHead(
+        incluirAjustes ? "Mayor Ajustado" : "Mayorización",
+        incluirAjustes
+          ? "Mayor acumulado con asientos del diario y de ajustes."
+          : "Cuentas con movimiento. El saldo corrido sigue la naturaleza de cada cuenta."
+      ) + bloques
+    );
+  }
+
+  /* ----- BTC ----- */
+
+  function viewBtc(incluirAjustes) {
+    const tb = trialBalance(incluirAjustes);
+    const rows = tb.rows
+      .map(
+        (r) => `<tr>
+          <td class="font-mono text-xs">${esc(r.cuenta.codigo)}</td>
+          <td>${esc(r.cuenta.nombre)}</td>
+          <td class="num">${fmt(r.debe)}</td>
+          <td class="num">${fmt(r.haber)}</td>
+          <td class="num">${r.saldoDeudor ? fmt(r.saldoDeudor) : ""}</td>
+          <td class="num">${r.saldoAcreedor ? fmt(r.saldoAcreedor) : ""}</td>
+        </tr>`
+      )
+      .join("");
+
+    return (
+      pageHead(
+        incluirAjustes ? "Balance de Comprobación Ajustado" : "Balance de Comprobación",
+        "Tabla de sumas y saldos. Debe cuadrar Sumas (Debe = Haber) y Saldos (Deudor = Acreedor)."
+      ) +
+      kpis([
+        { lbl: "Suma Debe", val: fmt(tb.sum.debe) },
+        { lbl: "Suma Haber", val: fmt(tb.sum.haber) },
+        { lbl: "Sumas", val: tb.sumasOk ? "Cuadran" : "Descuadran", cls: tb.sumasOk ? "text-emerald-700" : "text-red-600" },
+        { lbl: "Saldos", val: tb.saldosOk ? "Cuadran" : "Descuadran", cls: tb.saldosOk ? "text-emerald-700" : "text-red-600" },
+      ]) +
+      `<div class="mb-3">${badgeCuadra(tb.sumasOk, "Sumas Debe = Haber", "Sumas no coinciden")}
+       ${badgeCuadra(tb.saldosOk, "Deudor = Acreedor", "Saldos no coinciden")}</div>
+      <div class="table-wrap card">
+        <table class="data">
+          <thead><tr>
+            <th>Código</th><th>Cuenta</th>
+            <th class="num">Debe</th><th class="num">Haber</th>
+            <th class="num">Saldo deudor</th><th class="num">Saldo acreedor</th>
+          </tr></thead>
+          <tbody>${rows || `<tr><td colspan="6">Sin movimientos</td></tr>`}</tbody>
+          <tfoot><tr>
+            <td colspan="2">Totales</td>
+            <td class="num">${fmt(tb.sum.debe)}</td>
+            <td class="num">${fmt(tb.sum.haber)}</td>
+            <td class="num">${fmt(tb.sum.saldoDeudor)}</td>
+            <td class="num">${fmt(tb.sum.saldoAcreedor)}</td>
+          </tr></tfoot>
+        </table>
+      </div>`
+    );
+  }
+
+  /* ----- ER ----- */
+
+  function viewER() {
+    const er = estadoResultados();
+    const ganancia = er.utilidad >= 0;
+    const filasIng = er.ingresos
+      .map((r) => `<tr><td>${esc(r.cuenta.codigo)} ${esc(r.cuenta.nombre)}</td><td class="num">${fmt(r.saldo)}</td></tr>`)
+      .join("");
+    const filasGas = er.gastos
+      .map((r) => `<tr><td>${esc(r.cuenta.codigo)} ${esc(r.cuenta.nombre)}</td><td class="num">${fmt(r.saldo)}</td></tr>`)
+      .join("");
+
+    return (
+      pageHead(
+        "Estado de Resultados",
+        "Ingresos − Costos y Gastos = Utilidad o Pérdida del ejercicio (con saldos ya ajustados)."
+      ) +
+      kpis([
+        { lbl: "Ingresos", val: fmt(er.totalIng) },
+        { lbl: "Costos y gastos", val: fmt(er.totalGas) },
+        {
+          lbl: ganancia ? "Utilidad del ejercicio" : "Pérdida del ejercicio",
+          val: fmt(Math.abs(er.utilidad)),
+          cls: ganancia ? "text-emerald-700" : "text-red-600",
+        },
+      ]) +
+      `<div class="grid lg:grid-cols-2 gap-4">
+        <div class="table-wrap card">
+          <table class="data">
+            <thead><tr><th>Ingresos</th><th class="num">Monto</th></tr></thead>
+            <tbody>${filasIng || `<tr><td colspan="2" class="text-slate-500">Sin ingresos</td></tr>`}</tbody>
+            <tfoot><tr><td>Total ingresos</td><td class="num">${fmt(er.totalIng)}</td></tr></tfoot>
+          </table>
+        </div>
+        <div class="table-wrap card">
+          <table class="data">
+            <thead><tr><th>Costos y gastos</th><th class="num">Monto</th></tr></thead>
+            <tbody>${filasGas || `<tr><td colspan="2" class="text-slate-500">Sin gastos</td></tr>`}</tbody>
+            <tfoot><tr><td>Total gastos</td><td class="num">${fmt(er.totalGas)}</td></tr></tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="card p-4 mt-4 ${ganancia ? "eq-ok" : "eq-bad"}">
+        <div class="text-sm text-slate-500">Resultado del ejercicio</div>
+        <div class="text-lg font-semibold">${ganancia ? "Utilidad" : "Pérdida"}: ${fmt(Math.abs(er.utilidad))}</div>
+      </div>`
+    );
+  }
+
+  /* ----- BG ----- */
+
+  function viewBG() {
+    const bg = balanceGeneral();
+    const block = (title, rows, extraRow, total) => {
+      const body =
+        rows
+          .map((r) => `<tr><td>${esc(r.cuenta.codigo)} ${esc(r.cuenta.nombre)}</td><td class="num">${fmt(r.saldo)}</td></tr>`)
+          .join("") + (extraRow || "");
+      return `<div class="table-wrap card mb-4">
+        <table class="data">
+          <thead><tr><th>${esc(title)}</th><th class="num">Monto</th></tr></thead>
+          <tbody>${body || `<tr><td colspan="2" class="text-slate-500">Sin saldos</td></tr>`}</tbody>
+          <tfoot><tr><td>Total ${esc(title)}</td><td class="num">${fmt(total)}</td></tr></tfoot>
+        </table>
+      </div>`;
+    };
+    const utilRow = `<tr>
+      <td>Utilidad (pérdida) del ejercicio</td>
+      <td class="num">${fmt(bg.utilidad)}</td>
+    </tr>`;
+
+    return (
+      pageHead(
+        "Balance General",
+        "Activo = Pasivo + Patrimonio. La utilidad o pérdida se transfiere al Patrimonio sin asiento de cierre."
+      ) +
+      `<div class="card p-4 mb-5 ${bg.cuadra ? "eq-ok" : "eq-bad"} flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div class="text-xs uppercase tracking-wide text-slate-500">Ecuación contable</div>
+          <div class="text-lg font-semibold">Activo ${fmt(bg.activo)} = Pasivo ${fmt(bg.pasivo)} + Patrimonio ${fmt(
+            bg.patrimonio
+          )}</div>
+        </div>
+        ${badgeCuadra(bg.cuadra, "La ecuación cuadra", `Descuadra por ${fmt(Math.abs(bg.diferencia))}`)}
+      </div>
+      <div class="grid lg:grid-cols-2 gap-4">
+        <div>${block("Activo", bg.grupos.activo, "", bg.activo)}</div>
+        <div>
+          ${block("Pasivo", bg.grupos.pasivo, "", bg.pasivo)}
+          ${block("Patrimonio", bg.grupos.patrimonio, utilRow, bg.patrimonio)}
+        </div>
+      </div>`
+    );
+  }
+
+  function bindHeader() {
+    const emp = document.getElementById("empresa");
+    const per = document.getElementById("periodo");
+    emp.value = state.empresa;
+    per.value = state.periodo;
+    emp.oninput = () => {
+      state.empresa = emp.value;
+      save();
+    };
+    per.oninput = () => {
+      state.periodo = per.value;
+      save();
+    };
+    document.getElementById("btnReset").onclick = () => {
+      if (!confirm("Esto borra catálogo, asientos y vuelve al plan de cuentas de prueba. ¿Continuar?")) return;
+      state = defaultState();
+      save();
+      render();
+      toast("Datos restablecidos.");
+    };
+    document.getElementById("btnTutorial").onclick = () => openTutorial();
+  }
+
+  const TUTORIAL_STEPS = [
+    {
+      target: null,
+      title: "Bienvenido al sistema contable",
+      text: "Este recorrido te muestra cómo avanzar por el ciclo contable de principio a fin. Puedes saltarlo ahora y volver a abrirlo con el botón Ver tutorial.",
+    },
+    {
+      target: "header",
+      title: "Identifica tu ejercicio",
+      text: "Escribe la empresa y el periodo en la parte superior. Los cambios se guardan automáticamente en este navegador.",
+    },
+    {
+      target: "#nav",
+      title: "Navegación por fases",
+      text: "El menú lateral organiza el trabajo. Los pasos se desbloquean cuando completas los requisitos contables anteriores.",
+    },
+    {
+      target: "[data-nav=\"catalogo\"]",
+      title: "1. Catálogo de cuentas",
+      text: "Comienza revisando o agregando las cuentas que utilizarás. Cada cuenta define su elemento y naturaleza.",
+    },
+    {
+      target: "[data-nav=\"diario\"]",
+      title: "2. Libro Diario",
+      text: "Registra cada operación con partida doble. El sistema solo permite guardar asientos donde el Debe y el Haber coinciden.",
+    },
+    {
+      target: "[data-nav=\"btc\"]",
+      title: "3. Comprueba y ajusta",
+      text: "Después del Diario consulta la Mayorización y el Balance de Comprobación. Luego registra ajustes de fin de periodo y revisa sus balances ajustados.",
+    },
+    {
+      target: "[data-nav=\"er\"]",
+      title: "4. Estados financieros",
+      text: "Al completar las fases anteriores podrás consultar el Estado de Resultados y el Balance General. Usa Ver tutorial cuando quieras repasar el flujo.",
+    },
+  ];
+
+  function closeTutorial() {
+    document.getElementById("tutorial")?.remove();
+    document.querySelectorAll(".tutorial-target").forEach((el) => el.classList.remove("tutorial-target"));
+    document.querySelectorAll(".tutorial-target-parent").forEach((el) => el.classList.remove("tutorial-target-parent"));
+  }
+
+  function openTutorial() {
+    closeTutorial();
+    let current = 0;
+    const overlay = document.createElement("div");
+    overlay.id = "tutorial";
+    overlay.className = "modal-bg tutorial-bg";
+    overlay.innerHTML = `<div class="tutorial-card" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
+      <div class="tutorial-progress mb-4"><span></span></div>
+      <div class="flex items-center justify-between gap-3 mb-2">
+        <span class="text-xs font-semibold uppercase tracking-wide text-indigo-700" data-tutorial-count></span>
+        <button type="button" class="btn btn-ghost py-1 px-2" data-tutorial-skip>Omitir tutorial</button>
+      </div>
+      <h2 id="tutorialTitle" class="text-lg font-semibold text-slate-800" data-tutorial-title></h2>
+      <p class="text-sm leading-relaxed text-slate-600 mt-2" data-tutorial-text></p>
+      <div class="flex items-center justify-between gap-2 mt-5">
+        <button type="button" class="btn btn-ghost" data-tutorial-prev>Anterior</button>
+        <button type="button" class="btn btn-primary" data-tutorial-next></button>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+
+    const card = overlay.querySelector(".tutorial-card");
+    const title = overlay.querySelector("[data-tutorial-title]");
+    const text = overlay.querySelector("[data-tutorial-text]");
+    const count = overlay.querySelector("[data-tutorial-count]");
+    const progress = overlay.querySelector(".tutorial-progress span");
+    const previous = overlay.querySelector("[data-tutorial-prev]");
+    const next = overlay.querySelector("[data-tutorial-next]");
+
+    const finish = () => {
+      localStorage.setItem(TUTORIAL_KEY, "completado");
+      closeTutorial();
+    };
+
+    const renderStep = () => {
+      document.querySelectorAll(".tutorial-target").forEach((el) => el.classList.remove("tutorial-target"));
+      document.querySelectorAll(".tutorial-target-parent").forEach((el) => el.classList.remove("tutorial-target-parent"));
+      const step = TUTORIAL_STEPS[current];
+      const target = step.target ? document.querySelector(step.target) : null;
+      overlay.classList.toggle("tutorial-no-target", !target);
+      if (target) {
+        target.classList.add("tutorial-target");
+        document.querySelector(".sidebar")?.classList.add("tutorial-target-parent");
+      }
+      title.textContent = step.title;
+      text.textContent = step.text;
+      count.textContent = `Paso ${current + 1} de ${TUTORIAL_STEPS.length}`;
+      progress.style.width = `${((current + 1) / TUTORIAL_STEPS.length) * 100}%`;
+      previous.disabled = current === 0;
+      next.textContent = current === TUTORIAL_STEPS.length - 1 ? "Comenzar" : "Siguiente";
+      card.focus();
+    };
+
+    overlay.querySelector("[data-tutorial-skip]").onclick = finish;
+    previous.onclick = () => { if (current > 0) { current -= 1; renderStep(); } };
+    next.onclick = () => {
+      if (current === TUTORIAL_STEPS.length - 1) return finish();
+      current += 1;
+      renderStep();
+    };
+    overlay.onclick = (event) => { if (event.target === overlay) finish(); };
+    renderStep();
+  }
+
+  function render() {
+    if (!isUnlocked(state.view)) state.view = "catalogo";
+    renderNav();
+    const root = document.getElementById("view");
+    const binders = {
+      catalogo: [viewCatalogo, bindCatalogo],
+      plan: [viewPlan, bindPlan],
+      diario: [() => viewLibro({ esAjuste: false }), () => bindLibro(false)],
+      mayor: [() => viewMayor(false), null],
+      btc: [() => viewBtc(false), null],
+      ajustes: [() => viewLibro({ esAjuste: true }), () => bindLibro(true)],
+      mayorAj: [() => viewMayor(true), null],
+      btcAj: [() => viewBtc(true), null],
+      er: [viewER, null],
+      bg: [viewBG, null],
+    };
+    const pair = binders[state.view] || binders.catalogo;
+    root.innerHTML = pair[0]();
+    pair[1]?.();
+  }
+
+  bindHeader();
+  render();
+  if (!localStorage.getItem(TUTORIAL_KEY)) openTutorial();
+})();

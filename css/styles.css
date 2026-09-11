@@ -218,9 +218,86 @@ input, select, textarea, button {
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
 
-.account-help:hover { background: #c7d2fe; }
+.account-help:hover {
+  background: #c7d2fe;
+  transform: scale(1.22);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.45);
+}
+
+.account-popover-tooltip {
+  position: absolute;
+  z-index: 9999;
+  pointer-events: none;
+  background: #ffffff;
+  border: 1px solid #c7d2fe;
+  box-shadow: 0 12px 28px -4px rgba(49, 46, 129, 0.18), 0 4px 10px -2px rgba(0, 0, 0, 0.06);
+  border-radius: 0.85rem;
+  padding: 0.75rem 0.9rem;
+  width: max-content;
+  max-width: 18rem;
+  opacity: 0;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.account-popover-tooltip.pos-top {
+  transform: translateY(8px) scale(0.94);
+}
+
+.account-popover-tooltip.pos-top.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.account-popover-tooltip.pos-bottom {
+  transform: translateY(-8px) scale(0.94);
+}
+
+.account-popover-tooltip.pos-bottom.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.popover-header {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.4rem;
+}
+
+.popover-code {
+  font-family: monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #4338ca;
+  background: #eef2ff;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.35rem;
+}
+
+.popover-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.25;
+}
+
+.popover-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.popover-hint {
+  font-size: 0.68rem;
+  color: #64748b;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 0.3rem;
+  margin-top: 0.35rem;
+}
 
 .account-help-modal {
   width: min(100%, 34rem);

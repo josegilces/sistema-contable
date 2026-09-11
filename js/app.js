@@ -106,7 +106,6 @@
 
   const STEPS = [
     { id: "catalogo", phase: "config", n: null, label: "Catálogo de Cuentas" },
-    { id: "plan", phase: "config", n: null, label: "Plan de Cuentas / PDF" },
     { id: "diario", phase: "1", n: 1, label: "Libro Diario" },
     { id: "mayor", phase: "1", n: 2, label: "Mayorización" },
     { id: "btc", phase: "1", n: 3, label: "Balance de Comprobación" },
@@ -489,7 +488,7 @@
     const fase1Ok = hasDiario && btc.sumasOk && btc.saldosOk;
     const fase2Ok = asientosAjuste().length > 0 || state.sinAjustes;
 
-    if (id === "catalogo" || id === "plan") return null;
+    if (id === "catalogo") return null;
     if (id === "diario") return hasCtas ? null : "Cargue al menos una cuenta en el catálogo.";
     if (id === "mayor" || id === "btc")
       return hasDiario ? null : "Registre al menos un asiento cuadrado en el Libro Diario.";
@@ -595,7 +594,7 @@
     const rows = [...state.cuentas]
       .sort((a, b) => a.codigo.localeCompare(b.codigo))
       .map(
-        (c) => `<tr>
+        (c) => `<tr data-catalogo-account data-search="${esc(`${c.codigo} ${c.nombre} ${labelEl(c.elemento)} ${labelNat(c.naturaleza)}`.toLowerCase())}">
           <td class="font-mono text-xs">${esc(c.codigo)}</td>
           <td>${esc(c.nombre)} <button type="button" class="account-help" data-account-help="${c.id}" title="Consultar esta cuenta" aria-label="Consultar ${esc(c.nombre)}">?</button></td>
           <td><span class="badge badge-info">${esc(labelEl(c.elemento))}</span></td>
@@ -616,7 +615,8 @@
       `<div class="card p-4 mb-4">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
           <h3 class="text-sm font-semibold">Nueva / editar cuenta</h3>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <a href="PLAN%20DE%20CUENTAS%20ACTUALIZADO.pdf" target="_blank" rel="noopener noreferrer" class="btn btn-ghost text-xs">📄 Ver PDF de Referencia</a>
             <button type="button" id="btnOpenImport" class="btn btn-ok text-xs">📥 Importar (Excel / TXT)</button>
             <button type="button" id="btnDownloadTemplate" class="btn btn-ghost text-xs">📄 Plantilla Ejemplo</button>
           </div>
@@ -641,10 +641,18 @@
           </div>
         </form>
       </div>
+      <div class="card p-4 mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h3 class="text-sm font-semibold">Cuentas registradas (${state.cuentas.length})</h3>
+          <div class="field w-full sm:w-72">
+            <input id="catalogoSearch" class="input py-1 text-xs" placeholder="🔍 Buscar por código, nombre o tipo…" />
+          </div>
+        </div>
+      </div>
       <div class="table-wrap card">
         <table class="data">
           <thead><tr><th>Código</th><th>Nombre</th><th>Elemento</th><th>Naturaleza</th><th class="no-print"></th></tr></thead>
-          <tbody>${rows || `<tr><td colspan="5" class="text-slate-500">Sin cuentas</td></tr>`}</tbody>
+          <tbody id="catalogoRows">${rows || `<tr><td colspan="5" class="text-slate-500">Sin cuentas</td></tr>`}</tbody>
         </table>
       </div>`
     );
@@ -659,6 +667,16 @@
     document.getElementById("cancelCuenta").onclick = reset;
     document.getElementById("btnOpenImport").onclick = openImportModal;
     document.getElementById("btnDownloadTemplate").onclick = downloadTemplateCSV;
+
+    const searchInput = document.getElementById("catalogoSearch");
+    if (searchInput) {
+      searchInput.oninput = () => {
+        const q = searchInput.value.trim().toLowerCase();
+        document.querySelectorAll("[data-catalogo-account]").forEach((row) => {
+          row.hidden = q && !row.dataset.search.includes(q);
+        });
+      };
+    }
     form.onsubmit = (e) => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(form).entries());
@@ -1008,42 +1026,6 @@
       .join("");
   }
 
-  function viewPlan() {
-    const rows = [...state.cuentas]
-      .sort((a, b) => a.codigo.localeCompare(b.codigo))
-      .map(
-        (c) => `<tr data-plan-account data-search="${esc(`${c.codigo} ${c.nombre} ${labelEl(c.elemento)} ${labelNat(c.naturaleza)}`.toLowerCase())}">
-          <td class="font-mono text-xs">${esc(c.codigo)}</td>
-          <td>${esc(c.nombre)}</td>
-          <td><span class="badge badge-info">${esc(labelEl(c.elemento))}</span></td>
-          <td><span class="badge badge-gray">${esc(labelNat(c.naturaleza))}</span></td>
-          <td><button type="button" class="account-help" data-account-help="${c.id}" title="Ver referencia de esta cuenta" aria-label="Ver referencia de ${esc(c.nombre)}">?</button></td>
-        </tr>`
-      )
-      .join("");
-
-    return pageHead(
-      "Plan de Cuentas / Material de consulta",
-      "Consulta rápidamente las cuentas del sistema y su clasificación contable."
-    ) + `<div class="card p-4 mb-5">
-      <div class="flex flex-wrap items-end justify-between gap-3 mb-3">
-        <div>
-          <h3 class="text-sm font-semibold">Cuentas disponibles</h3>
-          <p class="text-xs text-slate-500 mt-1">Usa el icono ? para consultar una cuenta o abre el PDF de referencia.</p>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <a href="PLAN%20DE%20CUENTAS%20ACTUALIZADO.pdf" target="_blank" rel="noopener noreferrer" class="btn btn-ghost text-xs">📄 Ver PDF de Plan de Cuentas</a>
-          <div class="field w-full sm:w-64"><label for="planSearch">Buscar cuenta</label><input id="planSearch" class="input" placeholder="Código, nombre o elemento" /></div>
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table class="data"><thead><tr><th>Código</th><th>Cuenta</th><th>Elemento</th><th>Naturaleza</th><th></th></tr></thead>
-          <tbody id="planRows">${rows || `<tr><td colspan="5" class="text-slate-500">Sin cuentas</td></tr>`}</tbody>
-        </table>
-      </div>
-    </div>`;
-  }
-
   function openAccountHelp(id) {
     const account = cuentaById(id);
     if (!account) return;
@@ -1307,21 +1289,6 @@
     });
   }
 
-  function bindPlan() {
-    document.querySelectorAll("[data-account-help]").forEach((button) => {
-      button.onclick = () => openAccountHelp(button.dataset.accountHelp);
-    });
-    const search = document.getElementById("planSearch");
-    if (search) {
-      search.oninput = () => {
-        const query = search.value.trim().toLowerCase();
-        document.querySelectorAll("[data-plan-account]").forEach((row) => {
-          row.hidden = query && !row.dataset.search.includes(query);
-        });
-      };
-    }
-  }
-
   function historialAsientos(esAjuste) {
     const list = (esAjuste ? asientosAjuste() : asientosNormales()).sort((a, b) =>
       b.fecha.localeCompare(a.fecha)
@@ -1355,7 +1322,11 @@
             <tfoot><tr>
               <td>
                 <div class="flex items-center gap-2">Totales ${badgeCuadra(t.cuadrado, "Cuadrado", "Descuadrado")}
-                <button class="btn btn-danger ml-auto no-print" data-del-asiento="${a.id}">Eliminar</button></div>
+                  <div class="ml-auto flex items-center gap-1.5 no-print">
+                    <button type="button" class="btn btn-ghost text-xs py-1 px-2.5" data-edit-asiento="${a.id}">Editar</button>
+                    <button type="button" class="btn btn-danger text-xs py-1 px-2.5" data-del-asiento="${a.id}">Eliminar</button>
+                  </div>
+                </div>
               </td>
               <td class="num">${fmt(t.debe)}</td>
               <td class="num">${fmt(t.haber)}</td>
@@ -1504,22 +1475,52 @@
     form.fecha.addEventListener("change", refreshTotales);
     refreshTotales();
 
+    let editingAsientoId = null;
+
     form.onsubmit = (e) => {
       e.preventDefault();
+      const lineasValidas = readLineas().filter(lineaValida);
+      if (!lineasValidas.length) return toast("Agregue al menos una línea válida al asiento.");
       const asiento = {
-        id: uid(),
+        id: editingAsientoId || uid(),
         fecha: form.fecha.value,
         glosa: form.glosa.value.trim(),
         esAjuste: !!esAjuste,
-        lineas: readLineas().filter(lineaValida),
+        lineas: lineasValidas,
       };
       if (!asientoCuadrado(asiento)) return toast("El asiento debe estar cuadrado para guardarse.");
       if (esAjuste) state.sinAjustes = false;
-      state.asientos.push(asiento);
+
+      if (editingAsientoId) {
+        const idx = state.asientos.findIndex((a) => a.id === editingAsientoId);
+        if (idx !== -1) state.asientos[idx] = asiento;
+        else state.asientos.push(asiento);
+        toast("Asiento actualizado.");
+      } else {
+        state.asientos.push(asiento);
+        toast("Asiento guardado.");
+      }
+
+      editingAsientoId = null;
       save();
-      toast("Asiento guardado.");
       render();
     };
+
+    document.querySelectorAll("[data-edit-asiento]").forEach((b) => {
+      b.onclick = () => {
+        const a = state.asientos.find((x) => x.id === b.dataset.editAsiento);
+        if (!a) return;
+        editingAsientoId = a.id;
+        form.fecha.value = a.fecha;
+        form.glosa.value = a.glosa;
+        tbody.innerHTML = "";
+        a.lineas.forEach((l) => addRow(l));
+        refreshTotales();
+        form.glosa.focus();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        toast("Cargado en el formulario para editar.");
+      };
+    });
 
     document.querySelectorAll("[data-del-asiento]").forEach((b) => {
       b.onclick = () => {
@@ -1560,7 +1561,6 @@
                   <td>${esc(l.glosa)}</td>
                   <td class="num">${l.debe ? fmt(l.debe) : ""}</td>
                   <td class="num">${l.haber ? fmt(l.haber) : ""}</td>
-                  <td class="num">${fmt(l.saldo)}</td>
                 </tr>`
               )
               .join("");
@@ -1575,11 +1575,11 @@
                 <div class="text-sm font-semibold text-slate-700">${info.texto}</div>
               </div>
               <table class="data">
-                <thead><tr><th>Fecha</th><th>Glosa</th><th class="num">Débitos</th><th class="num">Créditos</th><th class="num">Saldo corrido</th></tr></thead>
+                <thead><tr><th>Fecha</th><th>Glosa</th><th class="num">Débitos</th><th class="num">Créditos</th></tr></thead>
                 <tbody>${filas}</tbody>
                 <tfoot><tr><td colspan="2">Totales</td><td class="num">${fmt(m.debe)}</td><td class="num">${fmt(
                   m.haber
-                )}</td><td class="num">${fmt(info.monto)}</td></tr></tfoot>
+                )}</td></tr></tfoot>
               </table>
             </div>`;
           })
@@ -1591,7 +1591,7 @@
         incluirAjustes ? "Mayor Ajustado" : "Mayorización",
         incluirAjustes
           ? "Mayor acumulado con asientos del diario y de ajustes."
-          : "Cuentas con movimiento. El saldo corrido sigue la naturaleza de cada cuenta."
+          : "Cuentas con movimiento y detalle de débitos y créditos."
       ) + bloques
     );
   }
@@ -1894,7 +1894,6 @@
     const root = document.getElementById("view");
     const binders = {
       catalogo: [viewCatalogo, bindCatalogo],
-      plan: [viewPlan, bindPlan],
       diario: [() => viewLibro({ esAjuste: false }), () => bindLibro(false)],
       mayor: [() => viewMayor(false), null],
       btc: [() => viewBtc(false), null],

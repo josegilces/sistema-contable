@@ -295,21 +295,26 @@ input, select, textarea, button {
 .tutorial-bg {
   align-items: flex-end;
   background: transparent;
-  z-index: 60;
+  z-index: 99999 !important; /* Salta por encima de cualquier sombra o sidebar */
   padding: 1.25rem;
+  pointer-events: none; /* Permite ver e interactuar */
 }
 
-.tutorial-bg.tutorial-no-target { background: rgba(7, 18, 43, 0.68); }
+.tutorial-bg.tutorial-no-target { 
+  background: rgba(7, 18, 43, 0.68); 
+  pointer-events: auto;
+}
 
 .tutorial-card {
   position: relative;
-  z-index: 64;
+  z-index: 100000 !important;
+  pointer-events: auto; /* Reactiva los clicks en los botones de la tarjeta */
   width: min(100%, 34rem);
-  background: #fff;
+  background: #ffffff !important;
   border: 1px solid #c7d2fe;
   border-radius: 1rem;
   padding: 1.25rem;
-  box-shadow: 0 24px 70px rgba(7, 18, 43, 0.35);
+  box-shadow: 0 24px 70px rgba(7, 18, 43, 0.45);
   animation: tutorial-in 0.2s ease-out;
 }
 

@@ -746,6 +746,85 @@
     modal.onclick = (event) => { if (event.target === modal) modal.remove(); };
   }
 
+  let activeTooltipElem = null;
+
+  function showAccountTooltip(targetBtn) {
+    const id = targetBtn.dataset.accountHelp;
+    if (!id) return;
+    const account = cuentaById(id);
+    if (!account) return;
+
+    hideAccountTooltip();
+
+    const tooltip = document.createElement("div");
+    tooltip.id = "accountHelpTooltip";
+    tooltip.className = "account-popover-tooltip";
+    tooltip.innerHTML = `
+      <div class="popover-header">
+        <span class="popover-code">${esc(account.codigo)}</span>
+        <span class="popover-title">${esc(account.nombre)}</span>
+      </div>
+      <div class="popover-badges">
+        <span class="badge badge-info">${esc(labelEl(account.elemento))}</span>
+        <span class="badge badge-gray">${esc(labelNat(account.naturaleza))}</span>
+      </div>
+      <div class="popover-hint">💡 Clic para abrir detalle completo</div>
+    `;
+
+    document.body.appendChild(tooltip);
+    activeTooltipElem = tooltip;
+
+    const rect = targetBtn.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+
+    let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
+    let top = rect.top - tooltipRect.height - 10;
+
+    if (top < 10) {
+      top = rect.bottom + 10;
+      tooltip.classList.add("pos-bottom");
+    } else {
+      tooltip.classList.add("pos-top");
+    }
+
+    if (left < 10) left = 10;
+    if (left + tooltipRect.width > window.innerWidth - 10) {
+      left = window.innerWidth - tooltipRect.width - 10;
+    }
+
+    tooltip.style.left = `${left + window.scrollX}px`;
+    tooltip.style.top = `${top + window.scrollY}px`;
+
+    requestAnimationFrame(() => {
+      if (activeTooltipElem === tooltip) {
+        tooltip.classList.add("visible");
+      }
+    });
+  }
+
+  function hideAccountTooltip() {
+    if (activeTooltipElem) {
+      const elem = activeTooltipElem;
+      activeTooltipElem = null;
+      elem.classList.remove("visible");
+      setTimeout(() => elem.remove(), 200);
+    }
+  }
+
+  document.addEventListener("mouseover", (e) => {
+    const btn = e.target.closest(".account-help");
+    if (btn && btn.dataset.accountHelp) {
+      showAccountTooltip(btn);
+    }
+  });
+
+  document.addEventListener("mouseout", (e) => {
+    const btn = e.target.closest(".account-help");
+    if (btn) {
+      hideAccountTooltip();
+    }
+  });
+
   function bindPlan() {
     document.querySelectorAll("[data-account-help]").forEach((button) => {
       button.onclick = () => openAccountHelp(button.dataset.accountHelp);
@@ -907,8 +986,13 @@
       haber.addEventListener("change", onHaber);
       const accountSelect = tr.querySelector(".sel-cta");
       const accountHelp = tr.querySelector("[data-line-account-help]");
+      if (linea.cuentaId) {
+        accountHelp.hidden = false;
+        accountHelp.dataset.accountHelp = linea.cuentaId;
+      }
       accountSelect.addEventListener("change", () => {
         accountHelp.hidden = !accountSelect.value;
+        accountHelp.dataset.accountHelp = accountSelect.value;
         accountHelp.onclick = () => openAccountHelp(accountSelect.value);
         refreshTotales();
       });

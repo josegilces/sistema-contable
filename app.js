@@ -318,8 +318,8 @@
         const haber = money(l.haber);
         row.debe = money(row.debe + debe);
         row.haber = money(row.haber + haber);
-        const saldoNat =
-          cta.naturaleza === "deudora" ? money(row.debe - row.haber) : money(row.haber - row.debe);
+        const diffLine = money(row.debe - row.haber);
+        const saldoNat = Math.abs(diffLine);
         row.lineas.push({
           fecha: a.fecha,
           glosa: a.glosa,
@@ -335,8 +335,21 @@
     return [...map.values()].sort((a, b) => a.cuenta.codigo.localeCompare(b.cuenta.codigo));
   }
 
+  function getSaldoInfo(debe, haber) {
+    const d = money(debe);
+    const h = money(haber);
+    const diff = money(d - h);
+    if (diff > 0) {
+      return { lado: "Deudor", monto: diff, texto: `Saldo Deudor: ${fmt(diff)}` };
+    } else if (diff < 0) {
+      return { lado: "Acreedor", monto: money(-diff), texto: `Saldo Acreedor: ${fmt(-diff)}` };
+    } else {
+      return { lado: "Cero", monto: 0, texto: `Saldo: ${fmt(0)}` };
+    }
+  }
+
   function saldoCorridoFinal(cta, debe, haber) {
-    return cta.naturaleza === "deudora" ? money(debe - haber) : money(haber - debe);
+    return Math.abs(money(debe - haber));
   }
 
   function trialBalance(incluirAjustes) {
@@ -1539,8 +1552,7 @@
     const bloques = data.length
       ? data
           .map((m) => {
-            const saldo = saldoCorridoFinal(m.cuenta, m.debe, m.haber);
-            const lado = m.cuenta.naturaleza === "deudora" ? "Deudor" : "Acreedor";
+            const info = getSaldoInfo(m.debe, m.haber);
             const filas = m.lineas
               .map(
                 (l) => `<tr>
@@ -1548,7 +1560,6 @@
                   <td>${esc(l.glosa)}</td>
                   <td class="num">${l.debe ? fmt(l.debe) : ""}</td>
                   <td class="num">${l.haber ? fmt(l.haber) : ""}</td>
-                  <td class="num">${fmt(l.saldo)}</td>
                 </tr>`
               )
               .join("");
@@ -1560,14 +1571,14 @@
                     labelNat(m.cuenta.naturaleza)
                   )}</div>
                 </div>
-                <div class="text-sm">Saldo ${lado}: <b class="num">${fmt(saldo)}</b></div>
+                <div class="text-sm font-semibold text-slate-700">${info.texto}</div>
               </div>
               <table class="data">
-                <thead><tr><th>Fecha</th><th>Glosa</th><th class="num">Débitos</th><th class="num">Créditos</th><th class="num">Saldo corrido</th></tr></thead>
+                <thead><tr><th>Fecha</th><th>Glosa</th><th class="num">Débitos</th><th class="num">Créditos</th></tr></thead>
                 <tbody>${filas}</tbody>
                 <tfoot><tr><td colspan="2">Totales</td><td class="num">${fmt(m.debe)}</td><td class="num">${fmt(
                   m.haber
-                )}</td><td class="num">${fmt(saldo)}</td></tr></tfoot>
+                )}</td></tr></tfoot>
               </table>
             </div>`;
           })
@@ -1579,7 +1590,7 @@
         incluirAjustes ? "Mayor Ajustado" : "Mayorización",
         incluirAjustes
           ? "Mayor acumulado con asientos del diario y de ajustes."
-          : "Cuentas con movimiento. El saldo corrido sigue la naturaleza de cada cuenta."
+          : "Cuentas con movimiento y detalle de débitos y créditos."
       ) + bloques
     );
   }

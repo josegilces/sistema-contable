@@ -318,8 +318,8 @@
         const haber = money(l.haber);
         row.debe = money(row.debe + debe);
         row.haber = money(row.haber + haber);
-        const saldoNat =
-          cta.naturaleza === "deudora" ? money(row.debe - row.haber) : money(row.haber - row.debe);
+        const diffLine = money(row.debe - row.haber);
+        const saldoNat = Math.abs(diffLine);
         row.lineas.push({
           fecha: a.fecha,
           glosa: a.glosa,
@@ -335,8 +335,21 @@
     return [...map.values()].sort((a, b) => a.cuenta.codigo.localeCompare(b.cuenta.codigo));
   }
 
+  function getSaldoInfo(debe, haber) {
+    const d = money(debe);
+    const h = money(haber);
+    const diff = money(d - h);
+    if (diff > 0) {
+      return { lado: "Deudor", monto: diff, texto: `Saldo Deudor: ${fmt(diff)}` };
+    } else if (diff < 0) {
+      return { lado: "Acreedor", monto: money(-diff), texto: `Saldo Acreedor: ${fmt(-diff)}` };
+    } else {
+      return { lado: "Cero", monto: 0, texto: `Saldo: ${fmt(0)}` };
+    }
+  }
+
   function saldoCorridoFinal(cta, debe, haber) {
-    return cta.naturaleza === "deudora" ? money(debe - haber) : money(haber - debe);
+    return Math.abs(money(debe - haber));
   }
 
   function trialBalance(incluirAjustes) {
@@ -601,7 +614,13 @@
         "Plan de cuentas del ejercicio. Las cuentas usadas en asientos no se pueden eliminar."
       ) +
       `<div class="card p-4 mb-4">
-        <h3 class="text-sm font-semibold mb-3">Nueva / editar cuenta</h3>
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <h3 class="text-sm font-semibold">Nueva / editar cuenta</h3>
+          <div class="flex items-center gap-2">
+            <button type="button" id="btnOpenImport" class="btn btn-ok text-xs">📥 Importar (Excel / TXT)</button>
+            <button type="button" id="btnDownloadTemplate" class="btn btn-ghost text-xs">📄 Plantilla Ejemplo</button>
+          </div>
+        </div>
         <form id="formCuenta" class="grid md:grid-cols-5 gap-3 items-end">
           <input type="hidden" name="editId" />
           <div class="field"><label>Código</label><input name="codigo" class="input" required maxlength="12" /></div>
@@ -638,6 +657,8 @@
       form.editId.value = "";
     };
     document.getElementById("cancelCuenta").onclick = reset;
+    document.getElementById("btnOpenImport").onclick = openImportModal;
+    document.getElementById("btnDownloadTemplate").onclick = downloadTemplateCSV;
     form.onsubmit = (e) => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(form).entries());
@@ -679,6 +700,303 @@
         render();
       };
     });
+  }
+
+  function downloadTemplateCSV() {
+    const csvContent = "data:text/csv;charset=utf-8," + 
+      "Codigo,Nombre,Elemento,Naturaleza\n" +
+      "1101,Caja Chica,activo,deudora\n" +
+      "1102,Bancos Locales,activo,deudora\n" +
+      "2101,Cuentas por Pagar Proveedores,pasivo,acreedora\n" +
+      "3101,Capital Social,patrimonio,acreedora\n" +
+      "4101,Ventas de Mercaderia,ingreso,acreedora\n" +
+      "5101,Gasto Sueldos y Salarios,gasto,deudora\n";
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "plantilla_cuentas.csv");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
+  function downloadTemplateTXT() {
+    const txtContent = "data:text/plain;charset=utf-8," + 
+      "1101\tCaja Chica\tactivo\tdeudora\n" +
+      "1102\tBancos Locales\tactivo\tdeudora\n" +
+      "2101\tCuentas por Pagar Proveedores\tpasivo\tacreedora\n" +
+      "3101\tCapital Social\tpatrimonio\tacreedora\n" +
+      "4101\tVentas de Mercaderia\tingreso\tacreedora\n" +
+      "5101\tGasto Sueldos y Salarios\tgasto\tdeudora\n";
+    const encodedUri = encodeURI(txtContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "plantilla_cuentas.txt");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
+  function inferElemento(codigo) {
+    const clean = codigo.replace(/\D/g, "");
+    const first = clean.charAt(0);
+    switch (first) {
+      case "1": return "activo";
+      case "2": return "pasivo";
+      case "3": return "patrimonio";
+      case "4": return "ingreso";
+      case "5":
+      case "6": return "gasto";
+      default: return "activo";
+    }
+  }
+
+  function inferNaturaleza(elemento) {
+    if (elemento === "pasivo" || elemento === "patrimonio" || elemento === "ingreso") {
+      return "acreedora";
+    }
+    return "deudora";
+  }
+
+  function parseElementoStr(str) {
+    if (!str) return null;
+    const s = str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (s.includes("act")) return "activo";
+    if (s.includes("pas")) return "pasivo";
+    if (s.includes("pat") || s.includes("cap")) return "patrimonio";
+    if (s.includes("ing")) return "ingreso";
+    if (s.includes("gas") || s.includes("egr")) return "gasto";
+    return null;
+  }
+
+  function parseNaturalezaStr(str) {
+    if (!str) return null;
+    const s = str.toLowerCase();
+    if (s.includes("acr") || s.includes("cred")) return "acreedora";
+    if (s.includes("deu") || s.includes("deb")) return "deudora";
+    return null;
+  }
+
+  function processRawMatrix(rows) {
+    const result = [];
+    rows.forEach((row) => {
+      if (!Array.isArray(row) || !row.length) return;
+      const col0 = String(row[0] || "").trim();
+      const col1 = String(row[1] || "").trim();
+      if (!col0 || !col1) return;
+      if (/c[oó]digo/i.test(col0) || /nombre|cuenta/i.test(col1)) return;
+
+      const col2 = String(row[2] || "").trim();
+      const col3 = String(row[3] || "").trim();
+
+      const el = parseElementoStr(col2) || inferElemento(col0);
+      const nat = parseNaturalezaStr(col3) || inferNaturaleza(el);
+
+      result.push({
+        codigo: col0,
+        nombre: col1,
+        elemento: el,
+        naturaleza: nat
+      });
+    });
+    return result;
+  }
+
+  function parseTextContent(text) {
+    const lines = text.split(/\r?\n/);
+    const matrix = lines.map((line) => {
+      if (!line.trim()) return null;
+      let parts = [];
+      if (line.includes("\t")) parts = line.split("\t");
+      else if (line.includes(";")) parts = line.split(";");
+      else if (line.includes("|")) parts = line.split("|");
+      else if (line.includes(",")) parts = line.split(",");
+      else parts = line.trim().split(/\s{2,}/);
+      return parts.map((p) => p.trim());
+    }).filter(Boolean);
+
+    return processRawMatrix(matrix);
+  }
+
+  function parseFileToAccounts(file, callback) {
+    const ext = file.name.split(".").pop().toLowerCase();
+    if ((ext === "xlsx" || ext === "xls") && window.XLSX) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: "array" });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rawRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+          const accounts = processRawMatrix(rawRows);
+          callback(null, accounts);
+        } catch (err) {
+          callback(err);
+        }
+      };
+      reader.onerror = (err) => callback(err);
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const text = e.target.result;
+          const accounts = parseTextContent(text);
+          callback(null, accounts);
+        } catch (err) {
+          callback(err);
+        }
+      };
+      reader.onerror = (err) => callback(err);
+      reader.readAsText(file);
+    }
+  }
+
+  function openImportModal() {
+    document.getElementById("importModal")?.remove();
+    const modal = document.createElement("div");
+    modal.id = "importModal";
+    modal.className = "modal-bg";
+    modal.innerHTML = `<div class="card account-help-modal" style="width:min(100%, 40rem);" role="dialog" aria-modal="true">
+      <div class="flex items-center justify-between gap-3 pb-3 border-b border-slate-100">
+        <div>
+          <h2 class="text-lg font-semibold text-slate-800">📥 Importar Cuentas Contables</h2>
+          <p class="text-xs text-slate-500">Soporta Excel (.xlsx, .xls), CSV y Archivos de Texto (.txt)</p>
+        </div>
+        <button type="button" class="btn btn-ghost" data-close-import>Cerrar</button>
+      </div>
+
+      <div class="space-y-4 my-4">
+        <div class="p-3 bg-indigo-50/70 border border-indigo-100 rounded-lg text-xs text-slate-700 space-y-1">
+          <p class="font-semibold text-indigo-900">Formato del archivo:</p>
+          <p>Columnas: <strong>1. Código</strong> | <strong>2. Nombre</strong> | 3. Elemento (opcional) | 4. Naturaleza (opcional)</p>
+          <p class="text-indigo-600">💡 Si no incluyes Elemento o Naturaleza, se autodetectarán según el primer dígito del código.</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <input type="file" id="importFileInput" accept=".xlsx, .xls, .csv, .txt" class="block text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer" />
+          <div class="flex gap-2 ml-auto">
+            <button type="button" id="btnDownloadCSV" class="btn btn-ghost text-xs">📄 Plantilla CSV</button>
+            <button type="button" id="btnDownloadTXT" class="btn btn-ghost text-xs">📄 Plantilla TXT</button>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-4 text-xs font-medium text-slate-700 pt-1">
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="importMode" value="merge" checked />
+            Agregar / Actualizar a cuentas actuales
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="importMode" value="replace" />
+            Reemplazar catálogo completo
+          </label>
+        </div>
+
+        <div id="importPreviewArea" class="hidden space-y-2">
+          <h4 class="text-xs font-semibold text-slate-700">Cuentas detectadas en el archivo (<span id="importCount">0</span>)</h4>
+          <div class="table-wrap max-h-56 overflow-y-auto">
+            <table class="data text-xs">
+              <thead><tr><th>Código</th><th>Nombre</th><th>Elemento</th><th>Naturaleza</th><th>Estado</th></tr></thead>
+              <tbody id="importPreviewRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+        <button type="button" class="btn btn-ghost text-xs" data-close-import>Cancelar</button>
+        <button type="button" id="btnConfirmImport" class="btn btn-primary text-xs" disabled>Confirmar e Importar</button>
+      </div>
+    </div>`;
+
+    document.body.appendChild(modal);
+    modal.querySelector("[data-close-import]").onclick = () => modal.remove();
+    modal.querySelector("#btnDownloadCSV").onclick = downloadTemplateCSV;
+    modal.querySelector("#btnDownloadTXT").onclick = downloadTemplateTXT;
+
+    let parsedAccounts = [];
+
+    const fileInput = modal.querySelector("#importFileInput");
+    const previewArea = modal.querySelector("#importPreviewArea");
+    const previewRows = modal.querySelector("#importPreviewRows");
+    const importCount = modal.querySelector("#importCount");
+    const confirmBtn = modal.querySelector("#btnConfirmImport");
+
+    fileInput.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      parseFileToAccounts(file, (err, accounts) => {
+        if (err || !accounts || !accounts.length) {
+          toast("No se pudieron detectar cuentas en el archivo.");
+          confirmBtn.disabled = true;
+          previewArea.classList.add("hidden");
+          return;
+        }
+
+        parsedAccounts = accounts;
+        importCount.textContent = accounts.length;
+        const existingCodes = new Set(state.cuentas.map((c) => c.codigo));
+
+        previewRows.innerHTML = accounts
+          .map((c) => {
+            const isDup = existingCodes.has(c.codigo);
+            return `<tr>
+              <td class="font-mono text-xs">${esc(c.codigo)}</td>
+              <td>${esc(c.nombre)}</td>
+              <td><span class="badge badge-info">${esc(labelEl(c.elemento))}</span></td>
+              <td><span class="badge badge-gray">${esc(labelNat(c.naturaleza))}</span></td>
+              <td>${isDup ? '<span class="text-amber-600 font-semibold">Existente</span>' : '<span class="text-emerald-600 font-semibold">Nueva</span>'}</td>
+            </tr>`;
+          })
+          .join("");
+
+        previewArea.classList.remove("hidden");
+        confirmBtn.disabled = false;
+      });
+    };
+
+    confirmBtn.onclick = () => {
+      if (!parsedAccounts.length) return;
+      const mode = modal.querySelector('input[name="importMode"]:checked').value;
+
+      if (mode === "replace") {
+        state.cuentas = parsedAccounts.map((c) => ({
+          id: uid(),
+          codigo: c.codigo,
+          nombre: c.nombre,
+          elemento: c.elemento,
+          naturaleza: c.naturaleza,
+        }));
+        toast(`Catálogo reemplazado con ${parsedAccounts.length} cuentas.`);
+      } else {
+        let agregadas = 0;
+        let actualizadas = 0;
+        parsedAccounts.forEach((c) => {
+          const existing = state.cuentas.find((x) => x.codigo === c.codigo);
+          if (existing) {
+            existing.nombre = c.nombre;
+            existing.elemento = c.elemento;
+            existing.naturaleza = c.naturaleza;
+            actualizadas++;
+          } else {
+            state.cuentas.push({
+              id: uid(),
+              codigo: c.codigo,
+              nombre: c.nombre,
+              elemento: c.elemento,
+              naturaleza: c.naturaleza,
+            });
+            agregadas++;
+          }
+        });
+        toast(`Importadas: ${agregadas} cuentas nuevas, ${actualizadas} actualizadas.`);
+      }
+
+      save();
+      modal.remove();
+      render();
+    };
   }
 
   /* ----- libro diario / ajustes ----- */
@@ -825,6 +1143,170 @@
     }
   });
 
+  let activePickerDropdown = null;
+
+  function closeActivePickerDropdown() {
+    if (activePickerDropdown) {
+      activePickerDropdown.remove();
+      activePickerDropdown = null;
+    }
+  }
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".account-picker") && !e.target.closest(".account-picker-dropdown")) {
+      closeActivePickerDropdown();
+    }
+  });
+
+  window.addEventListener("scroll", closeActivePickerDropdown, true);
+
+  function setupAccountPicker(pickerInput, hiddenInput, accountHelp, onSelectCallback) {
+    let highlightedIndex = -1;
+
+    const getFilteredCuentas = (query) => {
+      const q = query.trim().toLowerCase();
+      const all = [...state.cuentas].sort((a, b) => a.codigo.localeCompare(b.codigo));
+      if (!q) return all;
+      return all.filter(
+        (c) =>
+          c.codigo.toLowerCase().includes(q) ||
+          c.nombre.toLowerCase().includes(q) ||
+          `${c.codigo} ${c.nombre}`.toLowerCase().includes(q)
+      );
+    };
+
+    const renderDropdown = () => {
+      closeActivePickerDropdown();
+
+      const selectedCta = cuentaById(hiddenInput.value);
+      const isCurrentTextSelected = selectedCta && pickerInput.value === `${selectedCta.codigo} · ${selectedCta.nombre}`;
+      const query = isCurrentTextSelected ? "" : pickerInput.value;
+      const list = getFilteredCuentas(query);
+
+      const dropdown = document.createElement("div");
+      dropdown.className = "account-picker-dropdown";
+
+      if (!list.length) {
+        dropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 text-center">No se encontraron cuentas que coincidan</div>`;
+      } else {
+        dropdown.innerHTML = list
+          .map(
+            (c, idx) => `<div class="account-picker-item" data-id="${c.id}" data-index="${idx}">
+              <span class="code">${esc(c.codigo)}</span>
+              <span class="name">${esc(c.nombre)}</span>
+              <span class="badge badge-info">${esc(labelEl(c.elemento))}</span>
+            </div>`
+          )
+          .join("");
+      }
+
+      document.body.appendChild(dropdown);
+      activePickerDropdown = dropdown;
+
+      const rect = pickerInput.getBoundingClientRect();
+      dropdown.style.position = "fixed";
+      dropdown.style.top = `${rect.bottom + 4}px`;
+      dropdown.style.left = `${rect.left}px`;
+      dropdown.style.width = `${Math.max(rect.width, 280)}px`;
+
+      dropdown.querySelectorAll(".account-picker-item").forEach((item) => {
+        item.onmousedown = (e) => {
+          e.preventDefault();
+          selectAccount(item.dataset.id);
+        };
+      });
+    };
+
+    const selectAccount = (id) => {
+      const c = cuentaById(id);
+      if (c) {
+        hiddenInput.value = c.id;
+        pickerInput.value = `${c.codigo} · ${c.nombre}`;
+        accountHelp.hidden = false;
+        accountHelp.dataset.accountHelp = c.id;
+        accountHelp.onclick = () => openAccountHelp(c.id);
+      } else {
+        hiddenInput.value = "";
+        pickerInput.value = "";
+        accountHelp.hidden = true;
+        accountHelp.dataset.accountHelp = "";
+      }
+      closeActivePickerDropdown();
+      if (onSelectCallback) onSelectCallback();
+    };
+
+    pickerInput.addEventListener("focus", () => {
+      renderDropdown();
+    });
+
+    pickerInput.addEventListener("click", () => {
+      renderDropdown();
+    });
+
+    pickerInput.addEventListener("input", () => {
+      hiddenInput.value = "";
+      accountHelp.hidden = true;
+      highlightedIndex = -1;
+      renderDropdown();
+      if (onSelectCallback) onSelectCallback();
+    });
+
+    const updateHighlight = (items) => {
+      items.forEach((item, idx) => {
+        item.classList.toggle("highlighted", idx === highlightedIndex);
+        if (idx === highlightedIndex) {
+          item.scrollIntoView({ block: "nearest" });
+        }
+      });
+    };
+
+    pickerInput.addEventListener("keydown", (e) => {
+      if (!activePickerDropdown) {
+        if (e.key === "ArrowDown" || e.key === "Enter") {
+          renderDropdown();
+          return;
+        }
+      }
+      const items = activePickerDropdown ? activePickerDropdown.querySelectorAll(".account-picker-item") : [];
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (!items.length) return;
+        highlightedIndex = (highlightedIndex + 1) % items.length;
+        updateHighlight(items);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (!items.length) return;
+        highlightedIndex = (highlightedIndex - 1 + items.length) % items.length;
+        updateHighlight(items);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (highlightedIndex >= 0 && items[highlightedIndex]) {
+          selectAccount(items[highlightedIndex].dataset.id);
+        } else if (items.length === 1) {
+          selectAccount(items[0].dataset.id);
+        }
+      } else if (e.key === "Escape" || e.key === "Tab") {
+        closeActivePickerDropdown();
+      }
+    });
+
+    pickerInput.addEventListener("blur", () => {
+      setTimeout(() => {
+        if (!hiddenInput.value) {
+          if (!pickerInput.value.trim()) {
+            selectAccount("");
+          } else {
+            const selectedCta = cuentaById(hiddenInput.value);
+            if (selectedCta) {
+              pickerInput.value = `${selectedCta.codigo} · ${selectedCta.nombre}`;
+            }
+          }
+        }
+      }, 180);
+    });
+  }
+
   function bindPlan() {
     document.querySelectorAll("[data-account-help]").forEach((button) => {
       button.onclick = () => openAccountHelp(button.dataset.accountHelp);
@@ -964,12 +1446,24 @@
 
     const addRow = (linea = { cuentaId: "", debe: "", haber: "" }) => {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td><div class="flex items-center gap-1"><select class="input sel-cta"><option value="">Seleccione cuenta…</option>${opcionesCuentas()}</select><button type="button" class="account-help" data-line-account-help title="Consultar cuenta" aria-label="Consultar cuenta" hidden>?</button></div></td>
-        <td><input class="input num inp-debe" type="number" min="0" step="0.01" value="${linea.debe || ""}" /></td>
-        <td><input class="input num inp-haber" type="number" min="0" step="0.01" value="${linea.haber || ""}" /></td>
-        <td class="no-print"><button type="button" class="btn btn-danger del-linea">Quitar</button></td>`;
-      if (linea.cuentaId) tr.querySelector(".sel-cta").value = linea.cuentaId;
+      const ctaInit = cuentaById(linea.cuentaId);
+      const ctaText = ctaInit ? `${ctaInit.codigo} · ${ctaInit.nombre}` : "";
+
+      tr.innerHTML = `<td>
+        <div class="flex items-center gap-1">
+          <div class="account-picker">
+            <input type="text" class="input account-picker-input" placeholder="🔍 Buscar código o nombre…" value="${esc(ctaText)}" autocomplete="off" />
+            <input type="hidden" class="sel-cta" value="${linea.cuentaId || ""}" />
+          </div>
+          <button type="button" class="account-help" data-line-account-help title="Consultar cuenta" aria-label="Consultar cuenta" ${linea.cuentaId ? "" : "hidden"}>?</button>
+        </div>
+      </td>
+      <td><input class="input num inp-debe" type="number" min="0" step="0.01" value="${linea.debe || ""}" /></td>
+      <td><input class="input num inp-haber" type="number" min="0" step="0.01" value="${linea.haber || ""}" /></td>
+      <td class="no-print"><button type="button" class="btn btn-danger del-linea">Quitar</button></td>`;
+
       tbody.appendChild(tr);
+
       const debe = tr.querySelector(".inp-debe");
       const haber = tr.querySelector(".inp-haber");
       const onDebe = () => {
@@ -984,18 +1478,18 @@
       debe.addEventListener("change", onDebe);
       haber.addEventListener("input", onHaber);
       haber.addEventListener("change", onHaber);
-      const accountSelect = tr.querySelector(".sel-cta");
+
+      const pickerInput = tr.querySelector(".account-picker-input");
+      const hiddenInput = tr.querySelector(".sel-cta");
       const accountHelp = tr.querySelector("[data-line-account-help]");
+
       if (linea.cuentaId) {
-        accountHelp.hidden = false;
         accountHelp.dataset.accountHelp = linea.cuentaId;
+        accountHelp.onclick = () => openAccountHelp(linea.cuentaId);
       }
-      accountSelect.addEventListener("change", () => {
-        accountHelp.hidden = !accountSelect.value;
-        accountHelp.dataset.accountHelp = accountSelect.value;
-        accountHelp.onclick = () => openAccountHelp(accountSelect.value);
-        refreshTotales();
-      });
+
+      setupAccountPicker(pickerInput, hiddenInput, accountHelp, refreshTotales);
+
       tr.querySelector(".del-linea").onclick = () => {
         tr.remove();
         if (!tbody.children.length) addRow();
@@ -1058,8 +1552,7 @@
     const bloques = data.length
       ? data
           .map((m) => {
-            const saldo = saldoCorridoFinal(m.cuenta, m.debe, m.haber);
-            const lado = m.cuenta.naturaleza === "deudora" ? "Deudor" : "Acreedor";
+            const info = getSaldoInfo(m.debe, m.haber);
             const filas = m.lineas
               .map(
                 (l) => `<tr>
@@ -1079,14 +1572,14 @@
                     labelNat(m.cuenta.naturaleza)
                   )}</div>
                 </div>
-                <div class="text-sm">Saldo ${lado}: <b class="num">${fmt(saldo)}</b></div>
+                <div class="text-sm font-semibold text-slate-700">${info.texto}</div>
               </div>
               <table class="data">
                 <thead><tr><th>Fecha</th><th>Glosa</th><th class="num">Débitos</th><th class="num">Créditos</th><th class="num">Saldo corrido</th></tr></thead>
                 <tbody>${filas}</tbody>
                 <tfoot><tr><td colspan="2">Totales</td><td class="num">${fmt(m.debe)}</td><td class="num">${fmt(
                   m.haber
-                )}</td><td class="num">${fmt(saldo)}</td></tr></tfoot>
+                )}</td><td class="num">${fmt(info.monto)}</td></tr></tfoot>
               </table>
             </div>`;
           })

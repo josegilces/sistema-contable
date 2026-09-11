@@ -215,6 +215,11 @@
       lineas,
     });
 
+    const valorEquipo = 2100;
+    const valorSoftware = 900;
+    const cuotaDepreciacion = valorEquipo / 36;
+    const cuotaAmortizacion = valorSoftware / 36;
+
     base.empresa = "Distribuidora Vallejo";
     base.periodo = "2026";
     base.asientos = [
@@ -253,8 +258,18 @@
         linea("1103", 0, 1600),
         linea("2102", 0, 1000),
       ]),
-      asiento("2026-05-15", "Depreciación del periodo", [linea("5106", 43.33), linea("1202", 0, 43.33)], true),
-      asiento("2026-05-15", "Amortización del periodo", [linea("5107", 50), linea("1204", 0, 50)], true),
+      asiento(
+        "2026-05-15",
+        "Depreciación del periodo (valor del activo ÷ 36 meses)",
+        [linea("5106", cuotaDepreciacion), linea("1202", 0, cuotaDepreciacion)],
+        true
+      ),
+      asiento(
+        "2026-05-15",
+        "Amortización del periodo (valor del software ÷ 36 meses)",
+        [linea("5107", cuotaAmortizacion), linea("1204", 0, cuotaAmortizacion)],
+        true
+      ),
       asiento("2026-05-15", "Devengamiento de arrendamiento", [linea("5104", 500), linea("1114", 0, 500)], true),
     ];
     base.view = "bg";
@@ -1278,7 +1293,7 @@
   function viewLibro({ esAjuste }) {
     const title = esAjuste ? "Libro de Ajustes" : "Libro Diario";
     const sub = esAjuste
-      ? "Asientos de fin de periodo (depreciaciones, provisiones, devengos). Se marcan internamente como esAjuste = true."
+      ? "Asientos de fin de periodo (depreciaciones, amortizaciones, provisiones, devengos). La regla del ejemplo es valor del activo ÷ 36 meses."
       : "Registre partidas dobles. El asiento solo se guarda si Suma Debe = Suma Haber.";
     const extra = esAjuste
       ? `<label class="inline-flex items-center gap-2 text-sm bg-white border border-slate-200 rounded-xl px-3 py-2">
@@ -1287,8 +1302,41 @@
          </label>`
       : "";
 
+    const ajusteRapido = esAjuste
+      ? `
+        <div class="card p-4 mb-4 border border-indigo-100 bg-indigo-50/40">
+          <div class="flex flex-wrap items-end gap-3 mb-3">
+            <div class="field">
+              <label>Tipo de ajuste</label>
+              <select id="tipoAjusteRapido" class="input">
+                <option value="depreciacion">Depreciación</option>
+                <option value="amortizacion">Amortización</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Valor del activo</label>
+              <input id="valorActivoAjuste" type="number" min="0" step="0.01" class="input" placeholder="0.00" />
+            </div>
+            <div class="field">
+              <label>Meses</label>
+              <input id="mesesAjuste" type="number" min="1" step="1" value="36" class="input" />
+            </div>
+            <div class="field">
+              <label>Cuota mensual</label>
+              <input id="cuotaAjusteRapida" type="text" class="input bg-white" readonly value="0,00" />
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" id="calcularAjusteRapido" class="btn btn-primary">Calcular</button>
+            <button type="button" id="aplicarAjusteRapido" class="btn btn-ghost">Aplicar ajuste</button>
+          </div>
+        </div>
+      `
+      : "";
+
     return (
       pageHead(title, sub, extra) +
+      ajusteRapido +
       `<div class="card p-4 mb-5">
         <form id="formAsiento" class="space-y-3">
           <div class="grid md:grid-cols-3 gap-3">
@@ -1326,12 +1374,28 @@
     form.fecha.value = today();
     const tbody = document.querySelector("#tablaLineas tbody");
 
+    const calcularCuota = (valor, meses) => {
+      const valorNum = Number(valor || 0);
+      const mesesNum = Number(meses || 36);
+      if (!valorNum || !mesesNum || mesesNum <= 0) return 0;
+      return money(valorNum / mesesNum);
+    };
+
     const readLineas = () =>
       [...tbody.querySelectorAll("tr")].map((tr) => ({
         cuentaId: tr.querySelector(".sel-cta").value,
         debe: money(tr.querySelector(".inp-debe").value),
         haber: money(tr.querySelector(".inp-haber").value),
       }));
+
+    const actualizarCuotaRapida = () => {
+      if (!esAjuste) return;
+      const valor = document.getElementById("valorActivoAjuste");
+      const meses = document.getElementById("mesesAjuste");
+      const cuotaField = document.getElementById("cuotaAjusteRapida");
+      if (!valor || !meses || !cuotaField) return;
+      cuotaField.value = fmt(calcularCuota(valor.value, meses.value));
+    };
 
     const refreshTotales = () => {
       const t = totalesAsiento(readLineas());
@@ -1409,6 +1473,48 @@
     document.getElementById("addLinea").onclick = () => addRow();
     form.glosa.addEventListener("input", refreshTotales);
     form.fecha.addEventListener("change", refreshTotales);
+
+    if (esAjuste) {
+      const valorField = document.getElementById("valorActivoAjuste");
+      const mesesField = document.getElementById("mesesAjuste");
+      const tipoField = document.getElementById("tipoAjusteRapido");
+      const calcularBtn = document.getElementById("calcularAjusteRapido");
+      const aplicarBtn = document.getElementById("aplicarAjusteRapido");
+
+      [valorField, mesesField].forEach((input) => input?.addEventListener("input", actualizarCuotaRapida));
+      calcularBtn?.addEventListener("click", () => {
+        actualizarCuotaRapida();
+        toast("Cuota calculada. Puede aplicarla al ajuste.");
+      });
+      aplicarBtn?.addEventListener("click", () => {
+        const valor = Number(valorField?.value || 0);
+        const meses = Number(mesesField?.value || 36);
+        const tipo = tipoField?.value || "depreciacion";
+        const cuota = calcularCuota(valor, meses);
+        if (!valor || !meses || meses <= 0 || cuota <= 0) {
+          toast("Ingrese un valor y meses válidos antes de aplicar el ajuste.");
+          return;
+        }
+
+        const cuentaDebito = tipo === "depreciacion" ? cuentaPorCodigo("5106") : cuentaPorCodigo("5107");
+        const cuentaCredito = tipo === "depreciacion" ? cuentaPorCodigo("1202") : cuentaPorCodigo("1204");
+
+        if (!cuentaDebito || !cuentaCredito) {
+          toast("No se encontraron las cuentas de ajuste en el catálogo.");
+          return;
+        }
+
+        tbody.innerHTML = "";
+        addRow({ cuentaId: cuentaDebito.id, debe: cuota, haber: 0 });
+        addRow({ cuentaId: cuentaCredito.id, debe: 0, haber: cuota });
+
+        const glosaBase = tipo === "depreciacion" ? "Depreciación del periodo" : "Amortización del periodo";
+        form.glosa.value = `${glosaBase} (${fmt(valor)} ÷ ${meses} meses = ${fmt(cuota)})`;
+        refreshTotales();
+        toast("Ajuste calculado y cargado en el formulario.");
+      });
+    }
+
     refreshTotales();
 
     let editingAsientoId = null;

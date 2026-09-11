@@ -1125,15 +1125,25 @@
     }
   });
 
-  function renderDatalistCuentas() {
+  function renderDatalistCuentas(query = "") {
     let dl = document.getElementById("datalistCuentas");
     if (!dl) {
       dl = document.createElement("datalist");
       dl.id = "datalistCuentas";
       document.body.appendChild(dl);
     }
-    dl.innerHTML = [...state.cuentas]
-      .sort((a, b) => a.codigo.localeCompare(b.codigo))
+
+    const q = String(query || "").trim().toLowerCase();
+    const cuentas = [...state.cuentas].sort((a, b) => a.codigo.localeCompare(b.codigo));
+    const filtered = !q
+      ? cuentas
+      : cuentas.filter((c) => {
+          const haystack = `${c.codigo} ${c.nombre} ${labelEl(c.elemento)} ${labelNat(c.naturaleza)}`.toLowerCase();
+          return haystack.includes(q);
+        });
+
+    dl.innerHTML = filtered
+      .slice(0, 200)
       .map(
         (c) =>
           `<option value="${esc(c.codigo)} · ${esc(c.nombre)} (${esc(labelEl(c.elemento))})"></option>`
@@ -1161,13 +1171,23 @@
     found = state.cuentas.find((c) => c.nombre.toLowerCase() === clean.toLowerCase());
     if (found) return found;
 
+    const q = clean.toLowerCase();
+    found = state.cuentas.find(
+      (c) =>
+        c.codigo.toLowerCase().includes(q) ||
+        c.nombre.toLowerCase().includes(q) ||
+        labelEl(c.elemento).toLowerCase().includes(q)
+    );
+    if (found) return found;
+
     return null;
   }
 
   function setupAccountPicker(pickerInput, hiddenInput, accountHelp, onSelectCallback) {
-    renderDatalistCuentas();
+    renderDatalistCuentas(pickerInput.value);
 
     const syncSelection = () => {
+      renderDatalistCuentas(pickerInput.value);
       const cta = findCuentaFromInput(pickerInput.value);
       if (cta) {
         hiddenInput.value = cta.id;
@@ -1183,7 +1203,7 @@
     };
 
     pickerInput.addEventListener("focus", () => {
-      renderDatalistCuentas();
+      renderDatalistCuentas(pickerInput.value);
     });
 
     pickerInput.addEventListener("input", syncSelection);
@@ -1340,7 +1360,7 @@
 
       tr.innerHTML = `<td>
         <div class="account-picker-wrap">
-          <input type="text" list="datalistCuentas" class="input account-picker-input" placeholder="🔍 Buscar código o nombre…" value="${esc(ctaText)}" />
+          <input type="search" list="datalistCuentas" class="input account-picker-input" placeholder="Buscar código o nombre…" value="${esc(ctaText)}" autocomplete="off" spellcheck="false" />
           <input type="hidden" class="sel-cta" value="${linea.cuentaId || ""}" />
           <button type="button" class="account-help" data-line-account-help title="Consultar cuenta" aria-label="Consultar cuenta" ${linea.cuentaId ? "" : "hidden"}>?</button>
         </div>

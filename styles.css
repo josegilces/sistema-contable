@@ -310,20 +310,20 @@ input, select, textarea, button {
 
 .account-picker-input {
   width: 100%;
-  background-color: #ffffff !important;
-  background: #ffffff !important;
-  color: #1e293b !important;
+  min-width: 0;
+  background: #fff;
+  color: #1e293b;
   border: 1px solid var(--line);
   border-radius: 0.5rem;
   padding: 0.45rem 0.65rem;
   font-size: 0.83rem;
+  appearance: auto;
 }
 
 .account-picker-input:focus {
   outline: none;
   border-color: #6366f1;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-}
 }
 
 .account-help-modal {

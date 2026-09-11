@@ -1130,6 +1130,170 @@
     }
   });
 
+  let activePickerDropdown = null;
+
+  function closeActivePickerDropdown() {
+    if (activePickerDropdown) {
+      activePickerDropdown.remove();
+      activePickerDropdown = null;
+    }
+  }
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".account-picker") && !e.target.closest(".account-picker-dropdown")) {
+      closeActivePickerDropdown();
+    }
+  });
+
+  window.addEventListener("scroll", closeActivePickerDropdown, true);
+
+  function setupAccountPicker(pickerInput, hiddenInput, accountHelp, onSelectCallback) {
+    let highlightedIndex = -1;
+
+    const getFilteredCuentas = (query) => {
+      const q = query.trim().toLowerCase();
+      const all = [...state.cuentas].sort((a, b) => a.codigo.localeCompare(b.codigo));
+      if (!q) return all;
+      return all.filter(
+        (c) =>
+          c.codigo.toLowerCase().includes(q) ||
+          c.nombre.toLowerCase().includes(q) ||
+          `${c.codigo} ${c.nombre}`.toLowerCase().includes(q)
+      );
+    };
+
+    const renderDropdown = () => {
+      closeActivePickerDropdown();
+
+      const selectedCta = cuentaById(hiddenInput.value);
+      const isCurrentTextSelected = selectedCta && pickerInput.value === `${selectedCta.codigo} · ${selectedCta.nombre}`;
+      const query = isCurrentTextSelected ? "" : pickerInput.value;
+      const list = getFilteredCuentas(query);
+
+      const dropdown = document.createElement("div");
+      dropdown.className = "account-picker-dropdown";
+
+      if (!list.length) {
+        dropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 text-center">No se encontraron cuentas que coincidan</div>`;
+      } else {
+        dropdown.innerHTML = list
+          .map(
+            (c, idx) => `<div class="account-picker-item" data-id="${c.id}" data-index="${idx}">
+              <span class="code">${esc(c.codigo)}</span>
+              <span class="name">${esc(c.nombre)}</span>
+              <span class="badge badge-info">${esc(labelEl(c.elemento))}</span>
+            </div>`
+          )
+          .join("");
+      }
+
+      document.body.appendChild(dropdown);
+      activePickerDropdown = dropdown;
+
+      const rect = pickerInput.getBoundingClientRect();
+      dropdown.style.position = "fixed";
+      dropdown.style.top = `${rect.bottom + 4}px`;
+      dropdown.style.left = `${rect.left}px`;
+      dropdown.style.width = `${Math.max(rect.width, 280)}px`;
+
+      dropdown.querySelectorAll(".account-picker-item").forEach((item) => {
+        item.onmousedown = (e) => {
+          e.preventDefault();
+          selectAccount(item.dataset.id);
+        };
+      });
+    };
+
+    const selectAccount = (id) => {
+      const c = cuentaById(id);
+      if (c) {
+        hiddenInput.value = c.id;
+        pickerInput.value = `${c.codigo} · ${c.nombre}`;
+        accountHelp.hidden = false;
+        accountHelp.dataset.accountHelp = c.id;
+        accountHelp.onclick = () => openAccountHelp(c.id);
+      } else {
+        hiddenInput.value = "";
+        pickerInput.value = "";
+        accountHelp.hidden = true;
+        accountHelp.dataset.accountHelp = "";
+      }
+      closeActivePickerDropdown();
+      if (onSelectCallback) onSelectCallback();
+    };
+
+    pickerInput.addEventListener("focus", () => {
+      renderDropdown();
+    });
+
+    pickerInput.addEventListener("click", () => {
+      renderDropdown();
+    });
+
+    pickerInput.addEventListener("input", () => {
+      hiddenInput.value = "";
+      accountHelp.hidden = true;
+      highlightedIndex = -1;
+      renderDropdown();
+      if (onSelectCallback) onSelectCallback();
+    });
+
+    const updateHighlight = (items) => {
+      items.forEach((item, idx) => {
+        item.classList.toggle("highlighted", idx === highlightedIndex);
+        if (idx === highlightedIndex) {
+          item.scrollIntoView({ block: "nearest" });
+        }
+      });
+    };
+
+    pickerInput.addEventListener("keydown", (e) => {
+      if (!activePickerDropdown) {
+        if (e.key === "ArrowDown" || e.key === "Enter") {
+          renderDropdown();
+          return;
+        }
+      }
+      const items = activePickerDropdown ? activePickerDropdown.querySelectorAll(".account-picker-item") : [];
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (!items.length) return;
+        highlightedIndex = (highlightedIndex + 1) % items.length;
+        updateHighlight(items);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (!items.length) return;
+        highlightedIndex = (highlightedIndex - 1 + items.length) % items.length;
+        updateHighlight(items);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (highlightedIndex >= 0 && items[highlightedIndex]) {
+          selectAccount(items[highlightedIndex].dataset.id);
+        } else if (items.length === 1) {
+          selectAccount(items[0].dataset.id);
+        }
+      } else if (e.key === "Escape" || e.key === "Tab") {
+        closeActivePickerDropdown();
+      }
+    });
+
+    pickerInput.addEventListener("blur", () => {
+      setTimeout(() => {
+        if (!hiddenInput.value) {
+          if (!pickerInput.value.trim()) {
+            selectAccount("");
+          } else {
+            const selectedCta = cuentaById(hiddenInput.value);
+            if (selectedCta) {
+              pickerInput.value = `${selectedCta.codigo} · ${selectedCta.nombre}`;
+            }
+          }
+        }
+      }, 180);
+    });
+  }
+
   function bindPlan() {
     document.querySelectorAll("[data-account-help]").forEach((button) => {
       button.onclick = () => openAccountHelp(button.dataset.accountHelp);
@@ -1269,12 +1433,24 @@
 
     const addRow = (linea = { cuentaId: "", debe: "", haber: "" }) => {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td><div class="flex items-center gap-1"><select class="input sel-cta"><option value="">Seleccione cuenta…</option>${opcionesCuentas()}</select><button type="button" class="account-help" data-line-account-help title="Consultar cuenta" aria-label="Consultar cuenta" hidden>?</button></div></td>
-        <td><input class="input num inp-debe" type="number" min="0" step="0.01" value="${linea.debe || ""}" /></td>
-        <td><input class="input num inp-haber" type="number" min="0" step="0.01" value="${linea.haber || ""}" /></td>
-        <td class="no-print"><button type="button" class="btn btn-danger del-linea">Quitar</button></td>`;
-      if (linea.cuentaId) tr.querySelector(".sel-cta").value = linea.cuentaId;
+      const ctaInit = cuentaById(linea.cuentaId);
+      const ctaText = ctaInit ? `${ctaInit.codigo} · ${ctaInit.nombre}` : "";
+
+      tr.innerHTML = `<td>
+        <div class="flex items-center gap-1">
+          <div class="account-picker">
+            <input type="text" class="input account-picker-input" placeholder="🔍 Buscar código o nombre…" value="${esc(ctaText)}" autocomplete="off" />
+            <input type="hidden" class="sel-cta" value="${linea.cuentaId || ""}" />
+          </div>
+          <button type="button" class="account-help" data-line-account-help title="Consultar cuenta" aria-label="Consultar cuenta" ${linea.cuentaId ? "" : "hidden"}>?</button>
+        </div>
+      </td>
+      <td><input class="input num inp-debe" type="number" min="0" step="0.01" value="${linea.debe || ""}" /></td>
+      <td><input class="input num inp-haber" type="number" min="0" step="0.01" value="${linea.haber || ""}" /></td>
+      <td class="no-print"><button type="button" class="btn btn-danger del-linea">Quitar</button></td>`;
+
       tbody.appendChild(tr);
+
       const debe = tr.querySelector(".inp-debe");
       const haber = tr.querySelector(".inp-haber");
       const onDebe = () => {
@@ -1289,18 +1465,18 @@
       debe.addEventListener("change", onDebe);
       haber.addEventListener("input", onHaber);
       haber.addEventListener("change", onHaber);
-      const accountSelect = tr.querySelector(".sel-cta");
+
+      const pickerInput = tr.querySelector(".account-picker-input");
+      const hiddenInput = tr.querySelector(".sel-cta");
       const accountHelp = tr.querySelector("[data-line-account-help]");
+
       if (linea.cuentaId) {
-        accountHelp.hidden = false;
         accountHelp.dataset.accountHelp = linea.cuentaId;
+        accountHelp.onclick = () => openAccountHelp(linea.cuentaId);
       }
-      accountSelect.addEventListener("change", () => {
-        accountHelp.hidden = !accountSelect.value;
-        accountHelp.dataset.accountHelp = accountSelect.value;
-        accountHelp.onclick = () => openAccountHelp(accountSelect.value);
-        refreshTotales();
-      });
+
+      setupAccountPicker(pickerInput, hiddenInput, accountHelp, refreshTotales);
+
       tr.querySelector(".del-linea").onclick = () => {
         tr.remove();
         if (!tbody.children.length) addRow();

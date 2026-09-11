@@ -66,6 +66,8 @@
     ["2202", "Documentos por Pagar a Largo Plazo", "pasivo", "acreedora"],
     ["2203", "Provisiones a Largo Plazo", "pasivo", "acreedora"],
     ["2204", "Otros Pasivos No Corrientes", "pasivo", "acreedora"],
+    ["2205", "15% Participación Trabajadores por Pagar", "pasivo", "acreedora"],
+    ["2206", "25% Impuesto a la Renta por Pagar", "pasivo", "acreedora"],
     ["3101", "Capital social", "patrimonio", "acreedora"],
     ["3102", "Aportes de Socios", "patrimonio", "acreedora"],
     ["3201", "Reservas", "patrimonio", "acreedora"],
@@ -198,6 +200,72 @@
     );
   }
 
+  function cargarCasoPrueba() {
+    const base = defaultState();
+    const porCodigo = new Map(base.cuentas.map((cuenta) => [cuenta.codigo, cuenta.id]));
+    const linea = (codigo, debe = 0, haber = 0) => ({
+      cuentaId: porCodigo.get(codigo),
+      debe,
+      haber,
+    });
+    const asiento = (fecha, glosa, lineas, esAjuste = false) => ({
+      id: uid(),
+      fecha,
+      glosa,
+      esAjuste,
+      lineas,
+    });
+
+    base.empresa = "Distribuidora Vallejo";
+    base.periodo = "2026";
+    base.asientos = [
+      asiento("2026-05-03", "Se pagó por adelantado arriendo, gigantografía y transporte", [
+        linea("1114", 3000),
+        linea("5201", 350),
+        linea("5203", 250),
+        linea("1103", 0, 3600),
+      ]),
+      asiento("2026-05-06", "Adquisición de software y profesional en sistemas", [
+        linea("120302", 1800),
+        linea("5108", 400),
+        linea("1103", 0, 1200),
+        linea("2102", 0, 1000),
+      ]),
+      asiento("2026-05-08", "Venta de mercaderías", [
+        linea("1101", 2200),
+        linea("1106", 3000),
+        linea("1107", 3500),
+        linea("4101", 0, 8700),
+      ]),
+      asiento("2026-05-10", "Préstamo bancario a largo plazo", [
+        linea("1103", 15200),
+        linea("1101", 800),
+        linea("2201", 0, 16000),
+      ]),
+      asiento("2026-05-12", "Compra de mercadería", [
+        linea("1105", 6500),
+        linea("1101", 0, 2500),
+        linea("2101", 0, 4000),
+      ]),
+      asiento("2026-05-14", "Servicio técnico y compra de vehículo", [
+        linea("1101", 1300),
+        linea("120105", 2600),
+        linea("4102", 0, 1300),
+        linea("1103", 0, 1600),
+        linea("2102", 0, 1000),
+      ]),
+      asiento("2026-05-15", "Depreciación del periodo", [linea("5106", 43.33), linea("1202", 0, 43.33)], true),
+      asiento("2026-05-15", "Amortización del periodo", [linea("5107", 50), linea("1204", 0, 50)], true),
+      asiento("2026-05-15", "Devengamiento de arrendamiento", [linea("5104", 500), linea("1114", 0, 500)], true),
+    ];
+    base.view = "bg";
+    base.sinAjustes = false;
+    state = base;
+    save();
+    render();
+    toast("Caso de prueba cargado. Todas las fases están disponibles.");
+  }
+
   let state = load();
   let toastTimer = null;
 
@@ -315,31 +383,75 @@
     const totalIng = money(ingresos.reduce((s, x) => s + x.saldo, 0));
     const totalGas = money(gastos.reduce((s, x) => s + x.saldo, 0));
     const utilidad = money(totalIng - totalGas);
-    return { ingresos, gastos, totalIng, totalGas, utilidad };
+    const participacionTrabajadores = money(utilidad * 0.15);
+    const baseImponible = money(utilidad - participacionTrabajadores);
+    const impuestoRenta = money(baseImponible * 0.25);
+    const utilidadNeta = money(baseImponible - impuestoRenta);
+    return {
+      ingresos,
+      gastos,
+      totalIng,
+      totalGas,
+      utilidad,
+      participacionTrabajadores,
+      baseImponible,
+      impuestoRenta,
+      utilidadNeta,
+    };
+  }
+
+  function esPasivoNoCorriente(cuenta) {
+    return cuenta.codigo.startsWith("22") || [
+      "15% Participación Trabajadores por Pagar",
+      "25% Impuesto a la Renta por Pagar",
+    ].includes(cuenta.nombre);
   }
 
   function balanceGeneral() {
     const tb = trialBalance(true);
     const er = estadoResultados();
-    const grupos = { activo: [], pasivo: [], patrimonio: [] };
+    const grupos = { activo: [], pasivoCorriente: [], pasivoNoCorriente: [], patrimonio: [] };
     for (const r of tb.rows) {
-      if (!grupos[r.cuenta.elemento]) continue;
       const saldo = saldoElemento(r.cuenta, r.debe, r.haber);
       if (saldo === 0) continue;
-      grupos[r.cuenta.elemento].push({ ...r, saldo });
+      if (r.cuenta.elemento === "activo") {
+        grupos.activo.push({ ...r, saldo: r.cuenta.naturaleza === "acreedora" ? money(-saldo) : saldo });
+      }
+      if (r.cuenta.elemento === "pasivo") {
+        grupos[esPasivoNoCorriente(r.cuenta) ? "pasivoNoCorriente" : "pasivoCorriente"].push({ ...r, saldo });
+      }
+      if (r.cuenta.elemento === "patrimonio") grupos.patrimonio.push({ ...r, saldo });
+    }
+    const cuentaDeduccion = (codigo, nombre, saldo) => ({
+      cuenta: { codigo, nombre },
+      saldo,
+    });
+    if (er.participacionTrabajadores) {
+      grupos.pasivoNoCorriente.push(
+        cuentaDeduccion("2205", "15% Participación Trabajadores por Pagar", er.participacionTrabajadores)
+      );
+    }
+    if (er.impuestoRenta) {
+      grupos.pasivoNoCorriente.push(
+        cuentaDeduccion("2206", "25% Impuesto a la Renta por Pagar", er.impuestoRenta)
+      );
     }
     const tot = (arr) => money(arr.reduce((s, x) => s + x.saldo, 0));
     const activo = tot(grupos.activo);
-    const pasivo = tot(grupos.pasivo);
+    const pasivoCorriente = tot(grupos.pasivoCorriente);
+    const pasivoNoCorriente = tot(grupos.pasivoNoCorriente);
+    const pasivo = money(pasivoCorriente + pasivoNoCorriente);
     const patrimonioCtas = tot(grupos.patrimonio);
-    const patrimonio = money(patrimonioCtas + er.utilidad);
+    const patrimonio = money(patrimonioCtas + er.utilidadNeta);
     const pasPat = money(pasivo + patrimonio);
     return {
       grupos,
       activo,
       pasivo,
+      pasivoCorriente,
+      pasivoNoCorriente,
       patrimonioCtas,
-      utilidad: er.utilidad,
+      utilidad: er.utilidadNeta,
       patrimonio,
       pasPat,
       cuadra: activo === pasPat,
@@ -969,10 +1081,13 @@
         { lbl: "Ingresos", val: fmt(er.totalIng) },
         { lbl: "Costos y gastos", val: fmt(er.totalGas) },
         {
-          lbl: ganancia ? "Utilidad del ejercicio" : "Pérdida del ejercicio",
+          lbl: ganancia ? "Utilidad antes de deducciones" : "Pérdida antes de deducciones",
           val: fmt(Math.abs(er.utilidad)),
           cls: ganancia ? "text-emerald-700" : "text-red-600",
         },
+        { lbl: "15% Participación Trabajadores", val: fmt(er.participacionTrabajadores) },
+        { lbl: "Base imponible", val: fmt(er.baseImponible) },
+        { lbl: "25% Impuesto a la Renta", val: fmt(er.impuestoRenta) },
       ]) +
       `<div class="grid lg:grid-cols-2 gap-4">
         <div class="table-wrap card">
@@ -992,7 +1107,7 @@
       </div>
       <div class="card p-4 mt-4 ${ganancia ? "eq-ok" : "eq-bad"}">
         <div class="text-sm text-slate-500">Resultado del ejercicio</div>
-        <div class="text-lg font-semibold">${ganancia ? "Utilidad" : "Pérdida"}: ${fmt(Math.abs(er.utilidad))}</div>
+        <div class="text-lg font-semibold">${ganancia ? "Utilidad Neta del Ejercicio" : "Pérdida Neta del Ejercicio"}: ${fmt(Math.abs(er.utilidadNeta))}</div>
       </div>`
     );
   }
@@ -1015,14 +1130,14 @@
       </div>`;
     };
     const utilRow = `<tr>
-      <td>Utilidad (pérdida) del ejercicio</td>
+      <td>Utilidad Neta del Ejercicio</td>
       <td class="num">${fmt(bg.utilidad)}</td>
     </tr>`;
 
     return (
       pageHead(
         "Balance General",
-        "Activo = Pasivo + Patrimonio. La utilidad o pérdida se transfiere al Patrimonio sin asiento de cierre."
+        "Activo = Pasivo Total + Patrimonio. La utilidad o pérdida se transfiere al Patrimonio sin asiento de cierre."
       ) +
       `<div class="card p-4 mb-5 ${bg.cuadra ? "eq-ok" : "eq-bad"} flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -1036,7 +1151,13 @@
       <div class="grid lg:grid-cols-2 gap-4">
         <div>${block("Activo", bg.grupos.activo, "", bg.activo)}</div>
         <div>
-          ${block("Pasivo", bg.grupos.pasivo, "", bg.pasivo)}
+          ${block("Pasivo Corriente", bg.grupos.pasivoCorriente, "", bg.pasivoCorriente)}
+          ${block("Pasivo No Corriente", bg.grupos.pasivoNoCorriente, "", bg.pasivoNoCorriente)}
+          ${block("Pasivo Total", [],
+            `<tr><td>Pasivo Corriente</td><td class="num">${fmt(bg.pasivoCorriente)}</td></tr>` +
+            `<tr><td>Pasivo No Corriente</td><td class="num">${fmt(bg.pasivoNoCorriente)}</td></tr>`,
+            bg.pasivo
+          )}
           ${block("Patrimonio", bg.grupos.patrimonio, utilRow, bg.patrimonio)}
         </div>
       </div>`
@@ -1064,6 +1185,10 @@
       toast("Datos restablecidos.");
     };
     document.getElementById("btnTutorial").onclick = () => openTutorial();
+    document.getElementById("btnCasoPrueba").onclick = () => {
+      if (!confirm("Esto reemplazará los datos actuales por el caso Distribuidora Vallejo. ¿Continuar?")) return;
+      cargarCasoPrueba();
+    };
   }
 
   const TUTORIAL_STEPS = [
@@ -1150,10 +1275,13 @@
       const step = TUTORIAL_STEPS[current];
       const target = step.target ? document.querySelector(step.target) : null;
       overlay.classList.toggle("tutorial-no-target", !target);
+      
       if (target) {
-        target.classList.add("tutorial-target");
-        document.querySelector(".sidebar")?.classList.add("tutorial-target-parent");
+      target.classList.add("tutorial-target");
+      if (target.closest(".sidebar")) {
+      document.querySelector(".sidebar")?.classList.add("tutorial-target-parent");
       }
+    }
       title.textContent = step.title;
       text.textContent = step.text;
       count.textContent = `Paso ${current + 1} de ${TUTORIAL_STEPS.length}`;

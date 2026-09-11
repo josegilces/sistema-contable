@@ -1355,7 +1355,11 @@
             <tfoot><tr>
               <td>
                 <div class="flex items-center gap-2">Totales ${badgeCuadra(t.cuadrado, "Cuadrado", "Descuadrado")}
-                <button class="btn btn-danger ml-auto no-print" data-del-asiento="${a.id}">Eliminar</button></div>
+                  <div class="ml-auto flex items-center gap-1.5 no-print">
+                    <button type="button" class="btn btn-ghost text-xs py-1 px-2.5" data-edit-asiento="${a.id}">Editar</button>
+                    <button type="button" class="btn btn-danger text-xs py-1 px-2.5" data-del-asiento="${a.id}">Eliminar</button>
+                  </div>
+                </div>
               </td>
               <td class="num">${fmt(t.debe)}</td>
               <td class="num">${fmt(t.haber)}</td>
@@ -1504,22 +1508,52 @@
     form.fecha.addEventListener("change", refreshTotales);
     refreshTotales();
 
+    let editingAsientoId = null;
+
     form.onsubmit = (e) => {
       e.preventDefault();
+      const lineasValidas = readLineas().filter(lineaValida);
+      if (!lineasValidas.length) return toast("Agregue al menos una línea válida al asiento.");
       const asiento = {
-        id: uid(),
+        id: editingAsientoId || uid(),
         fecha: form.fecha.value,
         glosa: form.glosa.value.trim(),
         esAjuste: !!esAjuste,
-        lineas: readLineas().filter(lineaValida),
+        lineas: lineasValidas,
       };
       if (!asientoCuadrado(asiento)) return toast("El asiento debe estar cuadrado para guardarse.");
       if (esAjuste) state.sinAjustes = false;
-      state.asientos.push(asiento);
+
+      if (editingAsientoId) {
+        const idx = state.asientos.findIndex((a) => a.id === editingAsientoId);
+        if (idx !== -1) state.asientos[idx] = asiento;
+        else state.asientos.push(asiento);
+        toast("Asiento actualizado.");
+      } else {
+        state.asientos.push(asiento);
+        toast("Asiento guardado.");
+      }
+
+      editingAsientoId = null;
       save();
-      toast("Asiento guardado.");
       render();
     };
+
+    document.querySelectorAll("[data-edit-asiento]").forEach((b) => {
+      b.onclick = () => {
+        const a = state.asientos.find((x) => x.id === b.dataset.editAsiento);
+        if (!a) return;
+        editingAsientoId = a.id;
+        form.fecha.value = a.fecha;
+        form.glosa.value = a.glosa;
+        tbody.innerHTML = "";
+        a.lineas.forEach((l) => addRow(l));
+        refreshTotales();
+        form.glosa.focus();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        toast("Cargado en el formulario para editar.");
+      };
+    });
 
     document.querySelectorAll("[data-del-asiento]").forEach((b) => {
       b.onclick = () => {

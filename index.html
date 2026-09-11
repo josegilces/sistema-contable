@@ -48,11 +48,12 @@
           <input id="periodo" class="input py-1" placeholder="2026" />
         </div>
         <div class="flex items-center gap-2">
+          <button id="btnCasoPrueba" class="btn btn-primary no-print" type="button">Cargar Caso de Prueba (Distribuidora Vallejo)</button>
           <button id="btnTutorial" class="btn btn-ghost no-print" type="button">Ver tutorial</button>
           <button id="btnReset" class="btn btn-danger no-print">Restablecer</button>
         </div>
       </header>
-      <section id="view" class="flex-1 overflow-y-auto p-6"></section>
+      <section id="view" data-view-host="balance-general" class="flex-1 overflow-y-auto p-6"></section>
     </main>
   </div>
   <div id="toast" class="toast hidden"></div>

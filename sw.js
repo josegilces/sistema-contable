@@ -7,7 +7,8 @@ const ASSETS_TO_CACHE = [
   './manifest.json',
   './icon.svg',
   './PLAN%20DE%20CUENTAS%20ACTUALIZADO.pdf',
-  'https://cdn.tailwindcss.com'
+  'https://cdn.tailwindcss.com',
+  'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
 ];
 
 self.addEventListener('install', (event) => {

@@ -667,6 +667,9 @@
         form.codigo.focus();
       };
     });
+    document.querySelectorAll("[data-account-help]").forEach((button) => {
+      button.onclick = () => openAccountHelp(button.dataset.accountHelp);
+    });
     document.querySelectorAll("[data-del]").forEach((b) => {
       b.onclick = () => {
         if (cuentaEnUso(b.dataset.del)) return toast("No se puede eliminar: la cuenta tiene movimientos.");
@@ -708,9 +711,12 @@
       <div class="flex flex-wrap items-end justify-between gap-3 mb-3">
         <div>
           <h3 class="text-sm font-semibold">Cuentas disponibles</h3>
-          <p class="text-xs text-slate-500 mt-1">Usa el icono ? para consultar una cuenta mientras trabajas.</p>
+          <p class="text-xs text-slate-500 mt-1">Usa el icono ? para consultar una cuenta o abre el PDF de referencia.</p>
         </div>
-        <div class="field w-full sm:w-72"><label for="planSearch">Buscar cuenta</label><input id="planSearch" class="input" placeholder="Código, nombre o elemento" /></div>
+        <div class="flex flex-wrap items-center gap-2">
+          <a href="material/PLAN%20DE%20CUENTAS%20ACTUALIZADO.pdf" target="_blank" rel="noopener noreferrer" class="btn btn-ghost text-xs">📄 Ver PDF de Plan de Cuentas</a>
+          <div class="field w-full sm:w-64"><label for="planSearch">Buscar cuenta</label><input id="planSearch" class="input" placeholder="Código, nombre o elemento" /></div>
+        </div>
       </div>
       <div class="table-wrap">
         <table class="data"><thead><tr><th>Código</th><th>Cuenta</th><th>Elemento</th><th>Naturaleza</th><th></th></tr></thead>
@@ -730,7 +736,10 @@
     modal.innerHTML = `<div class="card account-help-modal" role="dialog" aria-modal="true" aria-labelledby="accountHelpTitle">
       <div class="flex items-start justify-between gap-3"><div><div class="text-xs uppercase tracking-wide text-slate-500">Referencia de cuenta</div><h2 id="accountHelpTitle" class="text-lg font-semibold text-slate-800 mt-1">${esc(account.codigo)} · ${esc(account.nombre)}</h2></div><button type="button" class="btn btn-ghost" data-close-account-help aria-label="Cerrar">Cerrar</button></div>
       <div class="grid sm:grid-cols-2 gap-3 mt-5"><div class="help-detail"><span>Elemento</span><strong>${esc(labelEl(account.elemento))}</strong></div><div class="help-detail"><span>Naturaleza</span><strong>${esc(labelNat(account.naturaleza))}</strong></div></div>
-      <p class="text-sm text-slate-600 leading-relaxed mt-5">Esta ficha muestra la clasificación contable disponible en la aplicación. El documento fuente se conserva localmente y no forma parte de la publicación web.</p>
+      <div class="mt-5 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+        <span class="text-xs text-slate-500">Documento de consulta oficial:</span>
+        <a href="material/PLAN%20DE%20CUENTAS%20ACTUALIZADO.pdf" target="_blank" rel="noopener noreferrer" class="btn btn-ghost text-xs">📄 Abrir Plan de Cuentas (PDF)</a>
+      </div>
     </div>`;
     document.body.appendChild(modal);
     modal.querySelector("[data-close-account-help]").onclick = () => modal.remove();

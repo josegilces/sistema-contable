@@ -106,7 +106,6 @@
 
   const STEPS = [
     { id: "catalogo", phase: "config", n: null, label: "Catálogo de Cuentas" },
-    { id: "plan", phase: "config", n: null, label: "Plan de Cuentas / PDF" },
     { id: "diario", phase: "1", n: 1, label: "Libro Diario" },
     { id: "mayor", phase: "1", n: 2, label: "Mayorización" },
     { id: "btc", phase: "1", n: 3, label: "Balance de Comprobación" },
@@ -489,7 +488,7 @@
     const fase1Ok = hasDiario && btc.sumasOk && btc.saldosOk;
     const fase2Ok = asientosAjuste().length > 0 || state.sinAjustes;
 
-    if (id === "catalogo" || id === "plan") return null;
+    if (id === "catalogo") return null;
     if (id === "diario") return hasCtas ? null : "Cargue al menos una cuenta en el catálogo.";
     if (id === "mayor" || id === "btc")
       return hasDiario ? null : "Registre al menos un asiento cuadrado en el Libro Diario.";
@@ -595,7 +594,7 @@
     const rows = [...state.cuentas]
       .sort((a, b) => a.codigo.localeCompare(b.codigo))
       .map(
-        (c) => `<tr>
+        (c) => `<tr data-catalogo-account data-search="${esc(`${c.codigo} ${c.nombre} ${labelEl(c.elemento)} ${labelNat(c.naturaleza)}`.toLowerCase())}">
           <td class="font-mono text-xs">${esc(c.codigo)}</td>
           <td>${esc(c.nombre)} <button type="button" class="account-help" data-account-help="${c.id}" title="Consultar esta cuenta" aria-label="Consultar ${esc(c.nombre)}">?</button></td>
           <td><span class="badge badge-info">${esc(labelEl(c.elemento))}</span></td>
@@ -616,7 +615,8 @@
       `<div class="card p-4 mb-4">
         <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
           <h3 class="text-sm font-semibold">Nueva / editar cuenta</h3>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <a href="PLAN%20DE%20CUENTAS%20ACTUALIZADO.pdf" target="_blank" rel="noopener noreferrer" class="btn btn-ghost text-xs">📄 Ver PDF de Referencia</a>
             <button type="button" id="btnOpenImport" class="btn btn-ok text-xs">📥 Importar (Excel / TXT)</button>
             <button type="button" id="btnDownloadTemplate" class="btn btn-ghost text-xs">📄 Plantilla Ejemplo</button>
           </div>
@@ -641,10 +641,18 @@
           </div>
         </form>
       </div>
+      <div class="card p-4 mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h3 class="text-sm font-semibold">Cuentas registradas (${state.cuentas.length})</h3>
+          <div class="field w-full sm:w-72">
+            <input id="catalogoSearch" class="input py-1 text-xs" placeholder="🔍 Buscar por código, nombre o tipo…" />
+          </div>
+        </div>
+      </div>
       <div class="table-wrap card">
         <table class="data">
           <thead><tr><th>Código</th><th>Nombre</th><th>Elemento</th><th>Naturaleza</th><th class="no-print"></th></tr></thead>
-          <tbody>${rows || `<tr><td colspan="5" class="text-slate-500">Sin cuentas</td></tr>`}</tbody>
+          <tbody id="catalogoRows">${rows || `<tr><td colspan="5" class="text-slate-500">Sin cuentas</td></tr>`}</tbody>
         </table>
       </div>`
     );
@@ -659,6 +667,16 @@
     document.getElementById("cancelCuenta").onclick = reset;
     document.getElementById("btnOpenImport").onclick = openImportModal;
     document.getElementById("btnDownloadTemplate").onclick = downloadTemplateCSV;
+
+    const searchInput = document.getElementById("catalogoSearch");
+    if (searchInput) {
+      searchInput.oninput = () => {
+        const q = searchInput.value.trim().toLowerCase();
+        document.querySelectorAll("[data-catalogo-account]").forEach((row) => {
+          row.hidden = q && !row.dataset.search.includes(q);
+        });
+      };
+    }
     form.onsubmit = (e) => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(form).entries());
@@ -1008,42 +1026,6 @@
       .join("");
   }
 
-  function viewPlan() {
-    const rows = [...state.cuentas]
-      .sort((a, b) => a.codigo.localeCompare(b.codigo))
-      .map(
-        (c) => `<tr data-plan-account data-search="${esc(`${c.codigo} ${c.nombre} ${labelEl(c.elemento)} ${labelNat(c.naturaleza)}`.toLowerCase())}">
-          <td class="font-mono text-xs">${esc(c.codigo)}</td>
-          <td>${esc(c.nombre)}</td>
-          <td><span class="badge badge-info">${esc(labelEl(c.elemento))}</span></td>
-          <td><span class="badge badge-gray">${esc(labelNat(c.naturaleza))}</span></td>
-          <td><button type="button" class="account-help" data-account-help="${c.id}" title="Ver referencia de esta cuenta" aria-label="Ver referencia de ${esc(c.nombre)}">?</button></td>
-        </tr>`
-      )
-      .join("");
-
-    return pageHead(
-      "Plan de Cuentas / Material de consulta",
-      "Consulta rápidamente las cuentas del sistema y su clasificación contable."
-    ) + `<div class="card p-4 mb-5">
-      <div class="flex flex-wrap items-end justify-between gap-3 mb-3">
-        <div>
-          <h3 class="text-sm font-semibold">Cuentas disponibles</h3>
-          <p class="text-xs text-slate-500 mt-1">Usa el icono ? para consultar una cuenta o abre el PDF de referencia.</p>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <a href="PLAN%20DE%20CUENTAS%20ACTUALIZADO.pdf" target="_blank" rel="noopener noreferrer" class="btn btn-ghost text-xs">📄 Ver PDF de Plan de Cuentas</a>
-          <div class="field w-full sm:w-64"><label for="planSearch">Buscar cuenta</label><input id="planSearch" class="input" placeholder="Código, nombre o elemento" /></div>
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table class="data"><thead><tr><th>Código</th><th>Cuenta</th><th>Elemento</th><th>Naturaleza</th><th></th></tr></thead>
-          <tbody id="planRows">${rows || `<tr><td colspan="5" class="text-slate-500">Sin cuentas</td></tr>`}</tbody>
-        </table>
-      </div>
-    </div>`;
-  }
-
   function openAccountHelp(id) {
     const account = cuentaById(id);
     if (!account) return;
@@ -1143,183 +1125,86 @@
     }
   });
 
-  let activePickerDropdown = null;
-
-  function closeActivePickerDropdown() {
-    if (activePickerDropdown) {
-      activePickerDropdown.remove();
-      activePickerDropdown = null;
+  function renderDatalistCuentas() {
+    let dl = document.getElementById("datalistCuentas");
+    if (!dl) {
+      dl = document.createElement("datalist");
+      dl.id = "datalistCuentas";
+      document.body.appendChild(dl);
     }
+    dl.innerHTML = [...state.cuentas]
+      .sort((a, b) => a.codigo.localeCompare(b.codigo))
+      .map(
+        (c) =>
+          `<option value="${esc(c.codigo)} · ${esc(c.nombre)} (${esc(labelEl(c.elemento))})"></option>`
+      )
+      .join("");
   }
 
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest(".account-picker") && !e.target.closest(".account-picker-dropdown")) {
-      closeActivePickerDropdown();
-    }
-  });
+  function findCuentaFromInput(val) {
+    if (!val) return null;
+    const clean = val.trim();
+    if (!clean) return null;
 
-  window.addEventListener("scroll", closeActivePickerDropdown, true);
+    let found = state.cuentas.find(
+      (c) => `${c.codigo} · ${c.nombre} (${labelEl(c.elemento)})` === clean
+    );
+    if (found) return found;
+
+    const codePart = clean.split(" · ")[0].trim();
+    found = state.cuentas.find((c) => c.codigo === codePart);
+    if (found) return found;
+
+    found = state.cuentas.find((c) => c.codigo.toLowerCase() === clean.toLowerCase());
+    if (found) return found;
+
+    found = state.cuentas.find((c) => c.nombre.toLowerCase() === clean.toLowerCase());
+    if (found) return found;
+
+    return null;
+  }
 
   function setupAccountPicker(pickerInput, hiddenInput, accountHelp, onSelectCallback) {
-    let highlightedIndex = -1;
+    renderDatalistCuentas();
 
-    const getFilteredCuentas = (query) => {
-      const q = query.trim().toLowerCase();
-      const all = [...state.cuentas].sort((a, b) => a.codigo.localeCompare(b.codigo));
-      if (!q) return all;
-      return all.filter(
-        (c) =>
-          c.codigo.toLowerCase().includes(q) ||
-          c.nombre.toLowerCase().includes(q) ||
-          `${c.codigo} ${c.nombre}`.toLowerCase().includes(q)
-      );
-    };
-
-    const renderDropdown = () => {
-      closeActivePickerDropdown();
-
-      const selectedCta = cuentaById(hiddenInput.value);
-      const isCurrentTextSelected = selectedCta && pickerInput.value === `${selectedCta.codigo} · ${selectedCta.nombre}`;
-      const query = isCurrentTextSelected ? "" : pickerInput.value;
-      const list = getFilteredCuentas(query);
-
-      const dropdown = document.createElement("div");
-      dropdown.className = "account-picker-dropdown";
-
-      if (!list.length) {
-        dropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 text-center">No se encontraron cuentas que coincidan</div>`;
-      } else {
-        dropdown.innerHTML = list
-          .map(
-            (c, idx) => `<div class="account-picker-item" data-id="${c.id}" data-index="${idx}">
-              <span class="code">${esc(c.codigo)}</span>
-              <span class="name">${esc(c.nombre)}</span>
-              <span class="badge badge-info">${esc(labelEl(c.elemento))}</span>
-            </div>`
-          )
-          .join("");
-      }
-
-      document.body.appendChild(dropdown);
-      activePickerDropdown = dropdown;
-
-      const rect = pickerInput.getBoundingClientRect();
-      dropdown.style.position = "fixed";
-      dropdown.style.top = `${rect.bottom + 4}px`;
-      dropdown.style.left = `${rect.left}px`;
-      dropdown.style.width = `${Math.max(rect.width, 280)}px`;
-
-      dropdown.querySelectorAll(".account-picker-item").forEach((item) => {
-        item.onmousedown = (e) => {
-          e.preventDefault();
-          selectAccount(item.dataset.id);
-        };
-      });
-    };
-
-    const selectAccount = (id) => {
-      const c = cuentaById(id);
-      if (c) {
-        hiddenInput.value = c.id;
-        pickerInput.value = `${c.codigo} · ${c.nombre}`;
+    const syncSelection = () => {
+      const cta = findCuentaFromInput(pickerInput.value);
+      if (cta) {
+        hiddenInput.value = cta.id;
         accountHelp.hidden = false;
-        accountHelp.dataset.accountHelp = c.id;
-        accountHelp.onclick = () => openAccountHelp(c.id);
+        accountHelp.dataset.accountHelp = cta.id;
+        accountHelp.onclick = () => openAccountHelp(cta.id);
+      } else {
+        hiddenInput.value = "";
+        accountHelp.hidden = true;
+        accountHelp.dataset.accountHelp = "";
+      }
+      if (onSelectCallback) onSelectCallback();
+    };
+
+    pickerInput.addEventListener("focus", () => {
+      renderDatalistCuentas();
+    });
+
+    pickerInput.addEventListener("input", syncSelection);
+    pickerInput.addEventListener("change", syncSelection);
+
+    pickerInput.addEventListener("blur", () => {
+      const cta = findCuentaFromInput(pickerInput.value);
+      if (cta) {
+        hiddenInput.value = cta.id;
+        pickerInput.value = `${cta.codigo} · ${cta.nombre} (${labelEl(cta.elemento)})`;
+        accountHelp.hidden = false;
+        accountHelp.dataset.accountHelp = cta.id;
+        accountHelp.onclick = () => openAccountHelp(cta.id);
       } else {
         hiddenInput.value = "";
         pickerInput.value = "";
         accountHelp.hidden = true;
         accountHelp.dataset.accountHelp = "";
       }
-      closeActivePickerDropdown();
-      if (onSelectCallback) onSelectCallback();
-    };
-
-    pickerInput.addEventListener("focus", () => {
-      renderDropdown();
-    });
-
-    pickerInput.addEventListener("click", () => {
-      renderDropdown();
-    });
-
-    pickerInput.addEventListener("input", () => {
-      hiddenInput.value = "";
-      accountHelp.hidden = true;
-      highlightedIndex = -1;
-      renderDropdown();
       if (onSelectCallback) onSelectCallback();
     });
-
-    const updateHighlight = (items) => {
-      items.forEach((item, idx) => {
-        item.classList.toggle("highlighted", idx === highlightedIndex);
-        if (idx === highlightedIndex) {
-          item.scrollIntoView({ block: "nearest" });
-        }
-      });
-    };
-
-    pickerInput.addEventListener("keydown", (e) => {
-      if (!activePickerDropdown) {
-        if (e.key === "ArrowDown" || e.key === "Enter") {
-          renderDropdown();
-          return;
-        }
-      }
-      const items = activePickerDropdown ? activePickerDropdown.querySelectorAll(".account-picker-item") : [];
-
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        if (!items.length) return;
-        highlightedIndex = (highlightedIndex + 1) % items.length;
-        updateHighlight(items);
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        if (!items.length) return;
-        highlightedIndex = (highlightedIndex - 1 + items.length) % items.length;
-        updateHighlight(items);
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        if (highlightedIndex >= 0 && items[highlightedIndex]) {
-          selectAccount(items[highlightedIndex].dataset.id);
-        } else if (items.length === 1) {
-          selectAccount(items[0].dataset.id);
-        }
-      } else if (e.key === "Escape" || e.key === "Tab") {
-        closeActivePickerDropdown();
-      }
-    });
-
-    pickerInput.addEventListener("blur", () => {
-      setTimeout(() => {
-        if (!hiddenInput.value) {
-          if (!pickerInput.value.trim()) {
-            selectAccount("");
-          } else {
-            const selectedCta = cuentaById(hiddenInput.value);
-            if (selectedCta) {
-              pickerInput.value = `${selectedCta.codigo} · ${selectedCta.nombre}`;
-            }
-          }
-        }
-      }, 180);
-    });
-  }
-
-  function bindPlan() {
-    document.querySelectorAll("[data-account-help]").forEach((button) => {
-      button.onclick = () => openAccountHelp(button.dataset.accountHelp);
-    });
-    const search = document.getElementById("planSearch");
-    if (search) {
-      search.oninput = () => {
-        const query = search.value.trim().toLowerCase();
-        document.querySelectorAll("[data-plan-account]").forEach((row) => {
-          row.hidden = query && !row.dataset.search.includes(query);
-        });
-      };
-    }
   }
 
   function historialAsientos(esAjuste) {
@@ -1451,14 +1336,12 @@
     const addRow = (linea = { cuentaId: "", debe: "", haber: "" }) => {
       const tr = document.createElement("tr");
       const ctaInit = cuentaById(linea.cuentaId);
-      const ctaText = ctaInit ? `${ctaInit.codigo} · ${ctaInit.nombre}` : "";
+      const ctaText = ctaInit ? `${ctaInit.codigo} · ${ctaInit.nombre} (${labelEl(ctaInit.elemento)})` : "";
 
       tr.innerHTML = `<td>
-        <div class="flex items-center gap-1">
-          <div class="account-picker">
-            <input type="text" class="input account-picker-input" placeholder="🔍 Buscar código o nombre…" value="${esc(ctaText)}" autocomplete="off" />
-            <input type="hidden" class="sel-cta" value="${linea.cuentaId || ""}" />
-          </div>
+        <div class="account-picker-wrap">
+          <input type="text" list="datalistCuentas" class="input account-picker-input" placeholder="🔍 Buscar código o nombre…" value="${esc(ctaText)}" />
+          <input type="hidden" class="sel-cta" value="${linea.cuentaId || ""}" />
           <button type="button" class="account-help" data-line-account-help title="Consultar cuenta" aria-label="Consultar cuenta" ${linea.cuentaId ? "" : "hidden"}>?</button>
         </div>
       </td>
@@ -1927,7 +1810,6 @@
     const root = document.getElementById("view");
     const binders = {
       catalogo: [viewCatalogo, bindCatalogo],
-      plan: [viewPlan, bindPlan],
       diario: [() => viewLibro({ esAjuste: false }), () => bindLibro(false)],
       mayor: [() => viewMayor(false), null],
       btc: [() => viewBtc(false), null],

@@ -299,65 +299,31 @@ input, select, textarea, button {
   margin-top: 0.35rem;
 }
 
-.account-picker {
+.account-picker-wrap {
   position: relative;
-  flex: 1;
-  min-width: 15rem;
-}
-
-.account-picker-dropdown {
-  position: fixed;
-  z-index: 99990;
-  max-height: 16rem;
-  overflow-y: auto;
-  background-color: #ffffff !important;
-  background: #ffffff !important;
-  border: 1px solid #a5b4fc;
-  border-radius: 0.65rem;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22), 0 4px 12px rgba(0, 0, 0, 0.08);
-  padding: 0.35rem 0;
-}
-
-.account-picker-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.82rem;
-  cursor: pointer;
-  background-color: #ffffff;
-  color: #1e293b;
-  transition: background 0.12s ease;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 16rem;
 }
 
-.account-picker-item:hover,
-.account-picker-item.highlighted {
-  background-color: #eef2ff !important;
-  color: #3730a3;
+.account-picker-input {
+  width: 100%;
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.83rem;
 }
 
-.account-picker-item .code {
-  font-family: monospace;
-  font-weight: 700;
-  color: #4338ca;
-  background: #eef2ff;
-  padding: 0.1rem 0.35rem;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  flex-shrink: 0;
+.account-picker-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
-
-.account-picker-item .name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.account-picker-item .badge {
-  flex-shrink: 0;
-  font-size: 0.7rem;
 }
 
 .account-help-modal {
